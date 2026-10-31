@@ -553,15 +553,23 @@ try:
         '<div class="section-h" style="margin-top:2.4rem;">3. Biplot: comunidades y variables en un mismo plano</div>',
         unsafe_allow_html=True,
     )
-    bc1, bc2, bc3, bc4 = st.columns([1, 1, 1.6, 1.2])
+    MODO_EQUIL = "Equilibrado (mitad por componente)"
+    MODO_PLANO = "Mejor representadas en el plano"
+    MODO_X = "Solo según el eje X"
+    MODO_Y = "Solo según el eje Y"
+    bc1, bc2, bc3 = st.columns([1, 1, 1.8])
     bx = bc1.selectbox("Eje X", components, index=0, key="bip_x")
     by = bc2.selectbox("Eje Y", components, index=1 if n_components > 1 else 0, key="bip_y")
+    modo = bc3.selectbox(
+        "Elegir las flechas según", [MODO_EQUIL, MODO_PLANO, MODO_X, MODO_Y], index=0, key="bip_modo",
+    )
     max_vec = min(30, len(X.columns))
-    n_vec = bc3.slider(
+    bc4, bc5 = st.columns([2.4, 1.2])
+    n_vec = bc4.slider(
         "Variables (flechas)", min_value=min(5, max_vec), max_value=max_vec,
         value=min(12, max_vec), key="bip_n",
     )
-    show_pts = bc4.checkbox("Mostrar comunidades", value=True, key="bip_pts")
+    show_pts = bc5.checkbox("Mostrar comunidades", value=True, key="bip_pts")
 
     col_chart3, col_guide3 = st.columns([3.2, 1.25], gap="medium")
     with col_chart3:
@@ -569,9 +577,25 @@ try:
             st.warning("Seleccione componentes distintos para los ejes X e Y del biplot.")
         else:
             lx, ly = loadings_df[bx], loadings_df[by]
-            # Se muestran las variables mejor representadas en el plano (mayor longitud de carga).
             reach = np.hypot(lx, ly)
-            top_vars = list(reach.sort_values(ascending=False).head(n_vec).index)
+            if modo == MODO_X:
+                top_vars = list(lx.abs().sort_values(ascending=False).head(n_vec).index)
+                desc_modo = f"con mayor carga en {bx}"
+            elif modo == MODO_Y:
+                top_vars = list(ly.abs().sort_values(ascending=False).head(n_vec).index)
+                desc_modo = f"con mayor carga en {by}"
+            elif modo == MODO_PLANO:
+                top_vars = list(reach.sort_values(ascending=False).head(n_vec).index)
+                desc_modo = "mejor representadas en este plano"
+            else:
+                # Mitad de las flechas según cada componente (sin repetir variables).
+                top_vars = list(lx.abs().sort_values(ascending=False).head(n_vec - n_vec // 2).index)
+                for v in ly.abs().sort_values(ascending=False).index:
+                    if len(top_vars) >= n_vec:
+                        break
+                    if v not in top_vars:
+                        top_vars.append(v)
+                desc_modo = f"con mayor carga en {bx} y en {by} (mitad según cada componente)"
             sx, sy = scores_df[bx].to_numpy(), scores_df[by].to_numpy()
             # Las flechas se escalan (con un único factor) para que quepan en la nube de puntos.
             ref = min(np.percentile(np.abs(sx), 98), np.percentile(np.abs(sy), 98))
@@ -582,7 +606,7 @@ try:
                 fig.add_trace(go.Scatter(
                     x=sx, y=sy, mode="markers", name="Comunidades",
                     text=scores_df["Comunidad"],
-                    marker=dict(size=6, color="#94A3B8", opacity=0.55),
+                    marker=dict(size=7, color=BLUE, opacity=0.6, line=dict(width=0.6, color=WHITE)),
                     hovertemplate=(
                         "<b>%{text}</b><br>"
                         f"{bx}: %{{x:.2f}}<br>{by}: %{{y:.2f}}<extra></extra>"
@@ -632,7 +656,7 @@ try:
             show_chart(fig, f"biplot_{bx}_{by}")
             st.markdown(
                 f'<p class="figcap"><b>Figura 3.</b> Biplot de {bx} y {by}: los puntos son comunidades '
-                f"y las flechas son las {len(top_vars)} variables mejor representadas en este plano "
+                f"y las flechas son las {len(top_vars)} variables {desc_modo} "
                 f"(las de criminalidad llevan ★ y van en naranja). Los ejes tienen la misma escala, de modo que "
                 f"el ángulo entre dos flechas aproxima la correlación entre sus variables: un ángulo pequeño "
                 f"indica correlación positiva, cercano a 90° ausencia de relación en este plano y cercano a 180° "
