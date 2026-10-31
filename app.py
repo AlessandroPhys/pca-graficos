@@ -548,6 +548,102 @@ try:
     with col_guide2:
         render_guide([component])
 
+    # ------------------------------ 3. Biplot ------------------------------
+    st.markdown(
+        '<div class="section-h" style="margin-top:2.4rem;">3. Biplot: comunidades y variables en un mismo plano</div>',
+        unsafe_allow_html=True,
+    )
+    bc1, bc2, bc3, bc4 = st.columns([1, 1, 1.6, 1.2])
+    bx = bc1.selectbox("Eje X", components, index=0, key="bip_x")
+    by = bc2.selectbox("Eje Y", components, index=1 if n_components > 1 else 0, key="bip_y")
+    max_vec = min(30, len(X.columns))
+    n_vec = bc3.slider(
+        "Variables (flechas)", min_value=min(5, max_vec), max_value=max_vec,
+        value=min(12, max_vec), key="bip_n",
+    )
+    show_pts = bc4.checkbox("Mostrar comunidades", value=True, key="bip_pts")
+
+    col_chart3, col_guide3 = st.columns([3.2, 1.25], gap="medium")
+    with col_chart3:
+        if bx == by:
+            st.warning("Seleccione componentes distintos para los ejes X e Y del biplot.")
+        else:
+            lx, ly = loadings_df[bx], loadings_df[by]
+            # Se muestran las variables mejor representadas en el plano (mayor longitud de carga).
+            reach = np.hypot(lx, ly)
+            top_vars = list(reach.sort_values(ascending=False).head(n_vec).index)
+            sx, sy = scores_df[bx].to_numpy(), scores_df[by].to_numpy()
+            # Las flechas se escalan (con un único factor) para que quepan en la nube de puntos.
+            ref = min(np.percentile(np.abs(sx), 98), np.percentile(np.abs(sy), 98))
+            scale = 0.9 * ref / float(reach[top_vars].max())
+
+            fig = go.Figure()
+            if show_pts:
+                fig.add_trace(go.Scatter(
+                    x=sx, y=sy, mode="markers", name="Comunidades",
+                    text=scores_df["Comunidad"],
+                    marker=dict(size=6, color="#94A3B8", opacity=0.55),
+                    hovertemplate=(
+                        "<b>%{text}</b><br>"
+                        f"{bx}: %{{x:.2f}}<br>{by}: %{{y:.2f}}<extra></extra>"
+                    ),
+                ))
+            for is_target, color, label in (
+                (False, INK, "Variable explicativa"),
+                (True, ORANGE, "Variable de criminalidad (target)"),
+            ):
+                names = [v for v in top_vars if (v in target_set) == is_target]
+                if not names:
+                    continue
+                tx, ty = lx[names].to_numpy() * scale, ly[names].to_numpy() * scale
+                for a, b in zip(tx, ty):
+                    fig.add_annotation(
+                        x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
+                        showarrow=True, arrowhead=3, arrowsize=1.3, arrowwidth=2.5,
+                        arrowcolor=color, text="",
+                    )
+                positions = [
+                    ("top" if b >= 0 else "bottom") + (" right" if a >= 0 else " left")
+                    for a, b in zip(tx, ty)
+                ]
+                fig.add_trace(go.Scatter(
+                    x=tx, y=ty, mode="markers+text", name=label,
+                    text=[("★ " if is_target else "") + n for n in names],
+                    textposition=positions,
+                    textfont=dict(size=15, color=color, family=FONT),
+                    marker=dict(size=8, color=color),
+                    customdata=np.column_stack([lx[names].to_numpy(), ly[names].to_numpy()]),
+                    hovertemplate=(
+                        "<b>%{text}</b><br>"
+                        f"Carga en {bx}: %{{customdata[0]:+.3f}}<br>"
+                        f"Carga en {by}: %{{customdata[1]:+.3f}}<extra></extra>"
+                    ),
+                ))
+            base_layout(fig, chart_height, f"Biplot: {bx} vs. {by}")
+            fig.update_xaxes(
+                title_text=f"<b>{bx}</b> ({var_of[bx]:.1f} % de la varianza)",
+                zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
+            )
+            fig.update_yaxes(
+                title_text=f"<b>{by}</b> ({var_of[by]:.1f} % de la varianza)",
+                zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
+                scaleanchor="x", scaleratio=1,
+            )
+            show_chart(fig, f"biplot_{bx}_{by}")
+            st.markdown(
+                f'<p class="figcap"><b>Figura 3.</b> Biplot de {bx} y {by}: los puntos son comunidades '
+                f"y las flechas son las {len(top_vars)} variables mejor representadas en este plano "
+                f"(las de criminalidad llevan ★ y van en naranja). Los ejes tienen la misma escala, de modo que "
+                f"el ángulo entre dos flechas aproxima la correlación entre sus variables: un ángulo pequeño "
+                f"indica correlación positiva, cercano a 90° ausencia de relación en este plano y cercano a 180° "
+                f"correlación negativa. Una flecha larga indica que la variable está bien representada por "
+                f"estos dos componentes. La longitud de las flechas está escalada para visualizarla junto a las "
+                f"comunidades; una comunidad se ubica hacia donde apuntan las variables en las que es alta.</p>",
+                unsafe_allow_html=True,
+            )
+    with col_guide3:
+        render_guide([bx, by])
+
     # ------------------------------ Datos y metodología ------------------------------
     with st.expander("Datos y metodología", expanded=False):
         st.markdown(
@@ -569,6 +665,10 @@ se reemplazan por la mediana de cada variable. No se elimina ninguna comunidad.
 **Estandarización y PCA.** Las variables se estandarizan (media 0, desviación 1) y se aplica PCA sobre la matriz
 de correlaciones. Las cargas se calculan como vectores propios × √(autovalor), equivalentes a la correlación
 entre cada variable y cada componente.
+
+**Biplot.** Superpone las puntuaciones de las comunidades y las cargas de las variables en un mismo plano de dos
+componentes. Las variables mostradas son las de mayor longitud de carga en ese plano, y las flechas se multiplican por
+un único factor para ajustarse a la escala de las puntuaciones.
 
 **Elipse de confianza.** Región del 95 % bajo normalidad bivariada de las puntuaciones; los puntos fuera de ella
 son candidatos a observaciones atípicas en ese plano.
