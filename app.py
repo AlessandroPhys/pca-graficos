@@ -26,7 +26,7 @@ N_COMPONENTES = 7                  # componentes que se muestran (PC1–PC7)
 TOP_N_DEFECTO = 15                 # variables por gráfico de cargas / biplot
 MAX_FALTANTES = 0.50               # se eliminan las variables con más de 50 % de faltantes
 COLUMNAS_IDENTIFICADORAS = ["State"]          # identificadores o metadatos
-COLUMNAS_REDUNDANTES = ["kidsBornNevrMarr","pop"]   # redundantes / no deseadas
+COLUMNAS_REDUNDANTES = ["kidsBornNevrMarr"]   # redundantes / no deseadas
 TARGETS_INCLUIDOS = ["violentPerPop", "nonViolPerPop"]  # targets que entran al análisis
 
 # ==========================================================================
@@ -37,13 +37,13 @@ TARGETS_INCLUIDOS = ["violentPerPop", "nonViolPerPop"]  # targets que entran al 
 # Si se deja vacío, el panel muestra "Descripción por completar."
 # ==========================================================================
 DESCRIPCIONES = {
-    "PC1": {"titulo": "", "detalle": ""},
-    "PC2": {"titulo": "", "detalle": ""},
-    "PC3": {"titulo": "", "detalle": ""},
-    "PC4": {"titulo": "", "detalle": ""},
-    "PC5": {"titulo": "", "detalle": ""},
-    "PC6": {"titulo": "", "detalle": ""},
-    "PC7": {"titulo": "", "detalle": ""},
+    "PC1": {"titulo": "Nivel socioeconómico", "detalle": "Bienestar económico y familias biparentales vs. pobreza y carencias"},
+    "PC2": {"titulo": "Inmigración y diversidad lingüística", "detalle": "Inmigrantes, hispanos/asiáticos y hogares hacinados vs. habla solo inglés"},
+    "PC3": {"titulo": "Tamaño del hogar y arraigo residencial", "detalle": "Hogares numerosos de propietarios arraigados vs. profesionales universitarios e inmigrantes recientes"},
+    "PC4": {"titulo": "Estructura de edad", "detalle": "Población joven, móvil y vivienda reciente vs. población mayor, jubilada y estable"},
+    "PC5": {"titulo": "Tamaño de la población (escala urbana)", "detalle": "Grandes ciudades (cifras absolutas altas) vs. localidades pequeñas"},
+    "PC6": {"titulo": "Ciclo de vida y estado civil", "detalle": "Jóvenes solteros con alquiler caro vs. adultos divorciados con empleo"},
+    "PC7": {"titulo": "Composición racial y vulnerabilidad urbana", "detalle": "Población negra, viviendas abandonadas y delito violento vs. población blanca mayor y jubilada"},
 }
 
 # Nombres reales de las 143 variables del dataset (125 explicativas + 18 de criminalidad),
