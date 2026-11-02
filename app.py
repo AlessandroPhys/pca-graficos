@@ -19,6 +19,17 @@ st.set_page_config(
 )
 
 # ==========================================================================
+# PARÁMETROS DEL ANÁLISIS (equivalen a las celdas 5 y 6 del notebook)
+# ==========================================================================
+RANDOM_STATE = 42
+N_COMPONENTES = 7                  # componentes que se muestran (PC1–PC7)
+TOP_N_DEFECTO = 15                 # variables por gráfico de cargas / biplot
+MAX_FALTANTES = 0.50               # se eliminan las variables con más de 50 % de faltantes
+COLUMNAS_IDENTIFICADORAS = ["State"]          # identificadores o metadatos
+COLUMNAS_REDUNDANTES = ["kidsBornNevrMarr"]   # redundantes / no deseadas
+TARGETS_INCLUIDOS = ["violentPerPop", "nonViolPerPop"]  # targets que entran al análisis
+
+# ==========================================================================
 # GUÍA DE COMPONENTES
 # Edite aquí el texto que se muestra en el panel de la derecha.
 #   "titulo":  nombre corto del componente (opcional)
@@ -35,20 +46,38 @@ DESCRIPCIONES = {
     "PC7": {"titulo": "", "detalle": ""},
 }
 
-# Se eliminan las variables (predictoras y de criminalidad/target) con más de este
-# porcentaje de datos faltantes.
-MAX_FALTANTES = 0.50
-
-# Columnas que identifican (no miden) y por tanto no deben entrar al PCA.
-COLUMNAS_IDENTIFICADORAS = {"fold", "countycode", "communitycode", "communityname", "state"}
-
-# Nombres de las 18 variables de criminalidad (targets) del dataset sin normalizar.
-NOMBRES_CRIMEN = [
-    "murders", "murdPerPop", "rapes", "rapesPerPop", "robberies", "robbbPerPop",
-    "assaults", "assaultPerPop", "burglaries", "burglPerPop", "larcenies", "larcPerPop",
-    "autoTheft", "autoTheftPerPop", "arsons", "arsonsPerPop",
-    "ViolentCrimesPerPop", "nonViolPerPop",
+# Nombres reales de las 143 variables del dataset (125 explicativas + 18 de criminalidad),
+# en el orden de ucimlrepo. Se usan solo si hay que descargar el ZIP de UCI directamente.
+NOMBRES_UCI = [
+    "State", "pop", "perHoush", "pctBlack", "pctWhite", "pctAsian", "pctHisp", "pct12-21",
+    "pct12-29", "pct16-24", "pct65up", "persUrban", "pctUrban", "medIncome", "pctWwage",
+    "pctWfarm", "pctWdiv", "pctWsocsec", "pctPubAsst", "pctRetire", "medFamIncome", "perCapInc",
+    "whitePerCap", "blackPerCap", "NAperCap", "asianPerCap", "otherPerCap", "hispPerCap",
+    "persPoverty", "pctPoverty", "pctLowEdu", "pctNotHSgrad", "pctCollGrad", "pctUnemploy",
+    "pctEmploy", "pctEmployMfg", "pctEmployProfServ", "pctOccupManu", "pctOccupMgmt",
+    "pctMaleDivorc", "pctMaleNevMar", "pctFemDivorc", "pctAllDivorc", "persPerFam", "pct2Par",
+    "pctKids2Par", "pctKids-4w2Par", "pct12-17w2Par", "pctWorkMom-6", "pctWorkMom-18",
+    "kidsBornNevrMarr", "pctKidsBornNevrMarr", "numForeignBorn", "pctFgnImmig-3", "pctFgnImmig-5",
+    "pctFgnImmig-8", "pctFgnImmig-10", "pctImmig-3", "pctImmig-5", "pctImmig-8", "pctImmig-10",
+    "pctSpeakOnlyEng", "pctNotSpeakEng", "pctLargHousFam", "pctLargHous", "persPerOccupHous",
+    "persPerOwnOccup", "persPerRenterOccup", "pctPersOwnOccup", "pctPopDenseHous",
+    "pctSmallHousUnits", "medNumBedrm", "houseVacant", "pctHousOccup", "pctHousOwnerOccup",
+    "pctVacantBoarded", "pctVacant6up", "medYrHousBuilt", "pctHousWOphone", "pctHousWOplumb",
+    "ownHousLowQ", "ownHousMed", "ownHousUperQ", "ownHousQrange", "rentLowQ", "rentMed",
+    "rentUpperQ", "rentQrange", "medGrossRent", "medRentpctHousInc", "medOwnCostpct",
+    "medOwnCostPctWO", "persEmergShelt", "persHomeless", "pctForeignBorn", "pctBornStateResid",
+    "pctSameHouse-5", "pctSameCounty-5", "pctSameState-5", "numPolice", "policePerPop",
+    "policeField", "policeFieldPerPop", "policeCalls", "policCallPerPop", "policCallPerOffic",
+    "policePerPop2", "racialMatch", "pctPolicWhite", "pctPolicBlack", "pctPolicHisp",
+    "pctPolicAsian", "pctPolicMinority", "officDrugUnits", "numDiffDrugsSeiz", "policAveOT",
+    "landArea", "popDensity", "pctUsePubTrans", "policCarsAvail", "policOperBudget",
+    "pctPolicPatrol", "gangUnit", "pctOfficDrugUnit", "policBudgetPerPop", "murders", "murdPerPop",
+    "rapes", "rapesPerPop", "robberies", "robbbPerPop", "assaults", "assaultPerPop", "burglaries",
+    "burglPerPop", "larcenies", "larcPerPop", "autoTheft", "autoTheftPerPop", "arsons",
+    "arsonsPerPop", "violentPerPop", "nonViolPerPop",
 ]
+N_EXPLICATIVAS = 125   # State + 124 variables numéricas
+N_TARGETS = 18
 
 # --------------------------------------------------------------------------
 # Paleta de alto contraste (pensada para proyectar sobre una pared)
@@ -144,6 +173,13 @@ h1 {
     color: %BODY%; margin: 0.4rem 0.2rem 0 0.2rem; text-align: justify;
 }
 
+/* Tablas */
+.tabla-titulo { font-weight: 700; font-size: 1.05rem; color: %INK%; margin: 0.8rem 0 0.3rem 0; text-align: center; }
+.tabla { width: 100%; border-collapse: collapse; background: %WHITE%; border: 2px solid %INK%; font-size: 1rem; }
+.tabla th { background: %INK%; color: #FFFFFF; padding: 0.4rem 0.7rem; text-align: right; font-weight: 700; }
+.tabla td { padding: 0.28rem 0.7rem; border-top: 1px solid %GRID%; text-align: right; color: %INK%; }
+.tabla th:first-child, .tabla td:first-child { text-align: left; font-weight: 600; }
+
 /* Panel estático: guía de componentes */
 .guide { background: %WHITE%; border: 2px solid %INK%; border-radius: 6px; padding: 0.9rem 1rem 0.4rem 1rem; margin-top: 0.2rem; }
 .guide-title {
@@ -162,7 +198,7 @@ h1 {
 </style>
 """
 for _name, _value in {
-    "%PAPER%": PAPER, "%INK%": INK, "%BLUE%": BLUE, "%WHITE%": WHITE, "%BODY%": BODY,
+    "%PAPER%": PAPER, "%INK%": INK, "%BLUE%": BLUE, "%WHITE%": WHITE, "%BODY%": BODY, "%GRID%": GRID,
 }.items():
     CSS = CSS.replace(_name, _value)
 st.markdown(CSS, unsafe_allow_html=True)
@@ -181,6 +217,15 @@ def fmt_int(n):
     return f"{int(n):,}".replace(",", ".")
 
 
+def html_table(df):
+    head = "".join(f"<th>{escape(str(c))}</th>" for c in df.columns)
+    body = "".join(
+        "<tr>" + "".join(f"<td>{escape(str(v))}</td>" for v in row) + "</tr>"
+        for row in df.itertuples(index=False)
+    )
+    return f'<table class="tabla"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
+
+
 def style_axes(fig):
     """Ejes cartesianos bien definidos: caja, líneas oscuras, marcas y texto grandes."""
     axis = dict(
@@ -194,18 +239,18 @@ def style_axes(fig):
     fig.update_yaxes(**axis)
 
 
-def base_layout(fig, height, title):
+def base_layout(fig, height, title, title_size=25, legend_size=17, top=105):
     fig.update_layout(
         height=height,
         template="plotly_white",
         paper_bgcolor=WHITE,
         plot_bgcolor=WHITE,
         font=dict(family=FONT, size=17, color=INK),
-        title=dict(text=f"<b>{title}</b>", x=0.5, xanchor="center", font=dict(size=25, color=INK)),
-        margin=dict(l=20, r=25, t=105, b=20),
+        title=dict(text=f"<b>{title}</b>", x=0.5, xanchor="center", font=dict(size=title_size, color=INK)),
+        margin=dict(l=20, r=25, t=top, b=20),
         legend=dict(
             orientation="h", x=0.5, xanchor="center", y=1.0, yanchor="bottom",
-            font=dict(size=17, color=INK), bgcolor="rgba(255,255,255,0)", itemsizing="constant",
+            font=dict(size=legend_size, color=INK), bgcolor="rgba(255,255,255,0)", itemsizing="constant",
         ),
         hoverlabel=dict(bgcolor=INK, bordercolor=INK, font=dict(size=17, color="#FFFFFF", family=FONT)),
     )
@@ -230,16 +275,20 @@ def show_chart(fig, filename):
 def load_data():
     """Carga el dataset de UCI.
 
-    Devuelve (tabla de variables, nombres de comunidades, lista de columnas target).
-    La tabla incluye las variables predictoras Y las de criminalidad (targets).
+    Devuelve (variables explicativas, variables de criminalidad (targets), nombres de comunidades).
     """
     api_error = None
     try:
         from ucimlrepo import fetch_ucirepo
         dataset = fetch_ucirepo(id=211)
         features = dataset.data.features
+        targets = dataset.data.targets
         if features is not None and not features.empty:
             features = features.copy().reset_index(drop=True)
+            targets = (
+                targets.copy().reset_index(drop=True)
+                if targets is not None else pd.DataFrame(index=features.index)
+            )
             ids = dataset.data.ids
             names = None
             if ids is not None and not ids.empty:
@@ -259,16 +308,7 @@ def load_data():
                 names = names.reset_index(drop=True)
             else:
                 names = pd.Series([f"Comunidad {i + 1}" for i in range(len(features))])
-
-            # Las variables target (criminalidad) se incorporan siempre.
-            target_cols = []
-            targets = dataset.data.targets
-            if targets is not None and not targets.empty:
-                targets = targets.copy().reset_index(drop=True)
-                targets = targets.loc[:, ~targets.columns.isin(features.columns)]
-                target_cols = list(targets.columns)
-                features = pd.concat([features, targets], axis=1)
-            return features, names, target_cols
+            return features, targets, names
     except Exception as exc:
         api_error = str(exc)
 
@@ -295,79 +335,89 @@ def load_data():
                 skipinitialspace=True,
             )
 
-    # Estructura: 4 columnas de identificación (nombre, estado, condado, comunidad),
-    # opcionalmente la columna "fold" (partición de validación, valores 1 a 10),
-    # las variables predictoras y, al final, 18 variables de criminalidad (targets).
-    if raw.shape[1] < 30:
+    # Estructura del archivo (147 columnas): 0 nombre de la comunidad, 1 estado, 2 código de condado,
+    # 3 código de comunidad, 4 partición "fold", 5–128 variables numéricas y 129–146 criminalidad.
+    if raw.shape[1] != 147:
         raise RuntimeError(f"El archivo descargado tiene un formato inesperado ({raw.shape[1]} columnas).")
-    start = 4
-    col4 = pd.to_numeric(raw.iloc[:, 4], errors="coerce")
-    if col4.notna().all() and col4.between(1, 10).all() and col4.nunique() <= 10:
-        start = 5  # columna "fold": identificador de partición, no una medición
-    body = raw.iloc[:, start:].copy()
-    n_pred = body.shape[1] - len(NOMBRES_CRIMEN)
-    body.columns = [f"Variable {i + 1:03d}" for i in range(n_pred)] + NOMBRES_CRIMEN
-    names = raw.iloc[:, 0].astype(str).str.strip()
-    states = raw.iloc[:, 1].astype(str).str.strip()
-    names = (names + " (" + states + ")").reset_index(drop=True)
-    body = body.reset_index(drop=True)
+    numeric = raw.iloc[:, 5:5 + (N_EXPLICATIVAS - 1)].copy()
+    numeric.columns = NOMBRES_UCI[1:N_EXPLICATIVAS]
+    features = pd.concat([raw.iloc[:, 1].astype(str).str.strip().rename("State"), numeric], axis=1)
+    targets = raw.iloc[:, -N_TARGETS:].copy()
+    targets.columns = NOMBRES_UCI[N_EXPLICATIVAS:]
+    names = (raw.iloc[:, 0].astype(str).str.strip() + " (" + raw.iloc[:, 1].astype(str).str.strip() + ")")
     if api_error:
         st.info("Se utilizó la descarga directa de UCI porque la API no respondió correctamente.")
-    return body, names, list(NOMBRES_CRIMEN)
+    return features.reset_index(drop=True), targets.reset_index(drop=True), names.reset_index(drop=True)
 
 
 try:
-    raw, community_names, target_cols = load_data()
-    target_set = set(target_cols)
+    features, targets_all, community_names = load_data()
 
-    # ------------------------------ Preparación de datos ------------------------------
-    raw = raw.drop(columns=[c for c in raw.columns if str(c).lower() in COLUMNAS_IDENTIFICADORAS])
-    X = raw.select_dtypes(include=[np.number]).copy()
-    # Convierte columnas que parecen numéricas.
-    for column in raw.columns:
-        if column not in X.columns:
-            converted = pd.to_numeric(raw[column], errors="coerce")
-            if converted.notna().any():
-                X[column] = converted
-    X = X.replace([np.inf, -np.inf], np.nan)
-    n_candidatas = X.shape[1]
+    # ==================== CELDA 5 DEL NOTEBOOK: preparar la matriz ====================
+    # Variables explicativas + variables de criminalidad (targets) elegidas.
+    targets_sel = targets_all[[c for c in TARGETS_INCLUIDOS if c in targets_all.columns]]
+    target_set = set(targets_sel.columns)
+    X = pd.concat([features, targets_sel], axis=1)
+    n_inicial = X.shape[1]
 
-    # Filtro: se eliminan las variables (predictoras y targets) con más de 50 % de faltantes.
-    missing_frac = X.isna().mean()
-    too_missing = missing_frac[missing_frac > MAX_FALTANTES]
-    X = X.drop(columns=too_missing.index)
-    removed_df = pd.DataFrame({
-        "Variable": list(too_missing.index),
-        "Tipo": ["Criminalidad (target)" if v in target_set else "Predictora" for v in too_missing.index],
-        "% faltante": (too_missing.values * 100).round(1),
-    }).sort_values("% faltante", ascending=False)
+    # 1. Identificadores o metadatos.
+    elim_identificadores = [c for c in COLUMNAS_IDENTIFICADORAS if c in X.columns]
+    X = X.drop(columns=elim_identificadores)
+    # Las columnas que queden sin tipo numérico se convierten (lo no convertible pasa a faltante).
+    for _c in X.columns:
+        if not pd.api.types.is_numeric_dtype(X[_c]):
+            X[_c] = pd.to_numeric(X[_c], errors="coerce")
 
-    # Se descartan además las variables constantes (varianza nula).
-    const_cols = list(X.columns[X.nunique(dropna=True) <= 1])
-    X = X.drop(columns=const_cols)
+    # 2. Variables con más de 50 % de faltantes.
+    porcentaje_na = X.isna().mean()
+    elim_por_na = porcentaje_na[porcentaje_na > MAX_FALTANTES]
+    X = X.drop(columns=elim_por_na.index)
+
+    # 3. Variables redundantes o no deseadas.
+    elim_redundantes = [c for c in COLUMNAS_REDUNDANTES if c in X.columns]
+    X = X.drop(columns=elim_redundantes)
     if X.empty:
         raise RuntimeError("No se encontraron variables numéricas utilizables.")
 
+    # 4. Imputación con la mediana y estandarización.
+    total_faltantes_imputados = int(X.isna().sum().sum())
     n_targets_kept = sum(1 for c in X.columns if c in target_set)
-    n_removed_targets = int((removed_df["Tipo"] == "Criminalidad (target)").sum()) if len(removed_df) else 0
-    missing_after = float(X.isna().to_numpy().mean() * 100)
-
-    X = pd.DataFrame(
-        SimpleImputer(strategy="median").fit_transform(X),
-        columns=X.columns,
-        index=X.index,
+    X_imputado = pd.DataFrame(
+        SimpleImputer(strategy="median").fit_transform(X), columns=X.columns, index=X.index,
     )
-    Z = StandardScaler().fit_transform(X)
-    n_components = min(7, Z.shape[0], Z.shape[1])
-    pca = PCA(n_components=n_components)
-    scores = pca.fit_transform(Z)
-    components = [f"PC{i + 1}" for i in range(n_components)]
-    variance = pca.explained_variance_ratio_ * 100
-    var_of = dict(zip(components, variance))
-    scores_df = pd.DataFrame(scores, columns=components, index=X.index)
+    Z = StandardScaler().fit_transform(X_imputado)
+
+    descartadas = (
+        [(v, "Identificador", "—") for v in elim_identificadores]
+        + [(v, "Redundante", "—") for v in elim_redundantes]
+        + [
+            (v, "Criminalidad (target)" if v in target_set else "Explicativa", f"{p * 100:.1f} %")
+            for v, p in elim_por_na.sort_values(ascending=False).items()
+        ]
+    )
+    descartadas_df = pd.DataFrame(descartadas, columns=["Variable", "Tipo", "% faltante"])
+    descartadas_df.insert(2, "Motivo", [
+        "Identificador o metadato" if t == "Identificador"
+        else "Redundante o no deseada" if t == "Redundante"
+        else f"Más de {MAX_FALTANTES * 100:.0f} % de faltantes"
+        for t in descartadas_df["Tipo"]
+    ])
+
+    # ==================== CELDA 6 DEL NOTEBOOK: PCA ====================
+    pca = PCA(n_components=None, random_state=RANDOM_STATE)
+    scores_pca = pca.fit_transform(Z)
+    varianza = pca.explained_variance_ratio_
+    acumulada = np.cumsum(varianza)
+    n_total = len(varianza)
+    k = min(N_COMPONENTES, n_total)
+    components = [f"PC{i + 1}" for i in range(k)]
+    var_of = {f"PC{i + 1}": 100 * v for i, v in enumerate(varianza)}
+
+    scores_df = pd.DataFrame(scores_pca[:, :k], columns=components, index=X.index)
     scores_df["Comunidad"] = community_names.reindex(X.index).fillna("Sin nombre").values
-    loadings = pca.components_.T * np.sqrt(pca.explained_variance_)
-    loadings_df = pd.DataFrame(loadings, index=X.columns, columns=components)
+    # Cargas = autovectores x raíz cuadrada de los autovalores (correlación variable-componente)
+    cargas = pca.components_.T * np.sqrt(pca.explained_variance_)
+    loadings_df = pd.DataFrame(cargas[:, :k], index=X.columns, columns=components)
 
     def render_guide(active):
         """Panel estático con la descripción de cada componente (se edita en DESCRIPCIONES)."""
@@ -393,13 +443,16 @@ try:
             unsafe_allow_html=True,
         )
 
+    def etiqueta(v):
+        return ("★ " + v) if v in target_set else v
+
     # ------------------------------ Resumen del análisis ------------------------------
     stats = [
         (fmt_int(X.shape[0]), "Observaciones (n)"),
         (fmt_int(X.shape[1]), "Variables analizadas (p)"),
-        (str(n_components), "Componentes (k)"),
-        (f"{variance.sum():.1f} %", f"Varianza acumulada PC1–PC{n_components}"),
-        (fmt_int(len(too_missing)), f"Variables excluidas (> {MAX_FALTANTES * 100:.0f} % faltantes)"),
+        (fmt_int(n_total), "Componentes calculadas"),
+        (f"{100 * acumulada[k - 1]:.1f} %", f"Varianza acumulada PC1–PC{k}"),
+        (fmt_int(len(elim_por_na)), f"Variables excluidas (> {MAX_FALTANTES * 100:.0f} % faltantes)"),
     ]
     st.markdown(
         '<div class="stats">'
@@ -408,10 +461,10 @@ try:
         unsafe_allow_html=True,
     )
 
-    # ------------------------------ 1. Proyección PCA ------------------------------
+    # ------------------------------ 1. Varianza explicada ------------------------------
     _, col_head, col_cfg = st.columns([1, 6, 1])
     col_head.markdown(
-        '<div class="section-h">1. Proyección de las comunidades en el espacio de componentes</div>',
+        '<div class="section-h">1. Varianza explicada por los componentes</div>',
         unsafe_allow_html=True,
     )
     with col_cfg.popover("⚙ Tamaño"):
@@ -420,9 +473,80 @@ try:
             help="Ajuste según la pantalla o el proyector.",
         )
 
+    m = min(50, n_total)
+    xs = np.arange(1, m + 1)
+    half_h = max(400, int(chart_height * 0.85))
+    sc1, sc2 = st.columns(2, gap="medium")
+
+    with sc1:
+        kc = min(N_COMPONENTES, m)
+        yk = 100 * varianza[kc - 1]
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=xs, y=100 * varianza[:m], mode="lines+markers", name="Varianza explicada",
+            line=dict(color=INK, width=3), marker=dict(size=6, color=INK),
+            hovertemplate="PC%{x}: %{y:.2f} %<extra></extra>",
+        ))
+        fig.add_vline(x=kc, line=dict(color=ORANGE, width=2.5, dash="dot"))
+        fig.add_hline(y=yk, line=dict(color=ORANGE, width=2.5, dash="dash"))
+        fig.add_trace(go.Scatter(
+            x=[kc], y=[yk], mode="markers", name=f"Corte en PC{kc} ({yk:.2f} %)",
+            marker=dict(size=13, color=ORANGE, line=dict(width=2, color=INK)),
+            hovertemplate=f"PC{kc}: {yk:.2f} %<extra></extra>",
+        ))
+        base_layout(fig, half_h, "Gráfico de sedimentación", title_size=21, legend_size=15, top=110)
+        fig.update_xaxes(title_text="<b>Componente principal</b>", range=[1, m])
+        fig.update_yaxes(title_text="<b>Varianza explicada (%)</b>", range=[0, float(100 * varianza[0]) * 1.08])
+        show_chart(fig, "sedimentacion")
+
+    with sc2:
+        fig = go.Figure()
+        for umbral, color in ((70, "#B91C1C"), (80, "#B45309"), (90, "#15803D"), (95, BLUE)):
+            fig.add_trace(go.Scatter(
+                x=[1, m], y=[umbral, umbral], mode="lines", name=f"{umbral} %",
+                line=dict(color=color, width=2.5, dash="dash"), hoverinfo="skip",
+            ))
+        fig.add_trace(go.Scatter(
+            x=xs, y=100 * acumulada[:m], mode="lines+markers", name="Varianza acumulada",
+            line=dict(color=INK, width=3), marker=dict(size=6, color=INK),
+            hovertemplate="Hasta PC%{x}: %{y:.2f} %<extra></extra>",
+        ))
+        base_layout(fig, half_h, "Varianza explicada acumulada", title_size=21, legend_size=15, top=110)
+        fig.update_xaxes(title_text="<b>Número de componentes</b>", range=[1, m])
+        fig.update_yaxes(title_text="<b>Varianza acumulada (%)</b>", range=[0, 102])
+        show_chart(fig, "varianza_acumulada")
+
+    st.markdown(
+        f'<p class="figcap"><b>Figuras 1 y 2.</b> Gráfico de sedimentación (izquierda) y varianza explicada acumulada '
+        f"(derecha) de los primeros {m} componentes, obtenidos con las {fmt_int(X.shape[1])} variables estandarizadas. "
+        f"La marca naranja señala el corte en PC{min(N_COMPONENTES, m)}; las líneas discontinuas de la derecha "
+        f"indican los umbrales de 70, 80, 90 y 95 % de la varianza total.</p>",
+        unsafe_allow_html=True,
+    )
+
+    tabla_pca = pd.DataFrame({
+        "Componente": [f"PC{i + 1}" for i in range(n_total)],
+        "Varianza explicada (%)": [f"{100 * v:.2f}" for v in varianza],
+        "Varianza acumulada (%)": [f"{100 * v:.2f}" for v in acumulada],
+    }).head(15)
+    umbrales_df = pd.DataFrame({
+        "Umbral de varianza": [f"{u:.0%}" for u in (0.70, 0.80, 0.90, 0.95)],
+        "Componentes necesarias": [int(np.searchsorted(acumulada, u) + 1) for u in (0.70, 0.80, 0.90, 0.95)],
+    })
+    t1, t2 = st.columns([1.5, 1], gap="medium")
+    t1.markdown('<div class="tabla-titulo">Varianza por componente (primeras 15)</div>' + html_table(tabla_pca),
+                unsafe_allow_html=True)
+    t2.markdown('<div class="tabla-titulo">Componentes necesarias para alcanzar cada umbral</div>'
+                + html_table(umbrales_df), unsafe_allow_html=True)
+
+    # ------------------------------ 2. Proyección PCA ------------------------------
+    st.markdown(
+        '<div class="section-h" style="margin-top:2.4rem;">2. Proyección de las comunidades en el espacio de componentes</div>',
+        unsafe_allow_html=True,
+    )
     col_x, col_y, col_find = st.columns([1, 1, 1.6])
     x_component = col_x.selectbox("Eje X", components, index=0)
-    y_component = col_y.selectbox("Eje Y", components, index=1 if n_components > 1 else 0)
+    y_component = col_y.selectbox("Eje Y", components, index=1 if k > 1 else 0)
     highlighted = col_find.selectbox(
         "Resaltar una comunidad",
         sorted(scores_df["Comunidad"].unique()),
@@ -472,30 +596,31 @@ try:
                     ),
                     showlegend=False,
                 ))
-            base_layout(fig, chart_height, f"{x_component} vs. {y_component}")
+            base_layout(fig, chart_height, f"Proyección PCA: {x_component} vs. {y_component}")
             fig.update_xaxes(
-                title_text=f"<b>{x_component}</b> ({var_of[x_component]:.1f} % de la varianza)",
+                title_text=f"<b>{x_component}</b> ({var_of[x_component]:.2f} % de varianza)",
                 zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
             )
             fig.update_yaxes(
-                title_text=f"<b>{y_component}</b> ({var_of[y_component]:.1f} % de la varianza)",
+                title_text=f"<b>{y_component}</b> ({var_of[y_component]:.2f} % de varianza)",
                 zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
             )
             show_chart(fig, f"proyeccion_{x_component}_{y_component}")
             st.markdown(
-                f'<p class="figcap"><b>Figura 1.</b> Proyección de las n = {fmt_int(X.shape[0])} comunidades '
-                f"sobre {x_component} ({var_of[x_component]:.1f} % de la varianza) y {y_component} "
-                f"({var_of[y_component]:.1f} % de la varianza). Cada punto es una comunidad; al pasar el "
+                f'<p class="figcap"><b>Figura 3.</b> Proyección de las n = {fmt_int(X.shape[0])} comunidades '
+                f"sobre {x_component} ({var_of[x_component]:.2f} % de la varianza) y {y_component} "
+                f"({var_of[y_component]:.2f} % de la varianza). Cada punto es una comunidad; al pasar el "
                 f"puntero se muestra su nombre. La elipse discontinua delimita la región esperada del 95 % "
-                f"bajo normalidad bivariada, y las líneas negras marcan el origen (puntuación 0) de cada eje.</p>",
+                f"bajo normalidad bivariada, y las líneas negras marcan el origen (puntuación 0) de cada eje. "
+                f"Pares usados en el notebook: PC1–PC2, PC1–PC3, PC2–PC3 y PC3–PC4.</p>",
                 unsafe_allow_html=True,
             )
     with col_guide:
         render_guide([x_component, y_component])
 
-    # ------------------------------ 2. Cargas (1 por vez) ------------------------------
+    # ------------------------------ 3. Cargas (1 por vez) ------------------------------
     st.markdown(
-        '<div class="section-h" style="margin-top:2.4rem;">2. Cargas de las variables en cada componente</div>',
+        '<div class="section-h" style="margin-top:2.4rem;">3. Cargas de las variables en cada componente</div>',
         unsafe_allow_html=True,
     )
     component = st.radio(
@@ -506,27 +631,27 @@ try:
     _, col_n, _ = st.columns([1.5, 2, 1.5])
     top_n = col_n.slider(
         "Variables a mostrar", min_value=min(5, max_top), max_value=max_top,
-        value=min(15, max_top),
+        value=min(TOP_N_DEFECTO, max_top),
     )
 
     col_chart2, col_guide2 = st.columns([3.2, 1.25], gap="medium")
     with col_chart2:
-        values = loadings_df[component].reindex(
-            loadings_df[component].abs().sort_values(ascending=False).head(top_n).index
-        )
-        order = list(values.index)
+        # Como en el notebook: las top_n variables con mayor carga absoluta, ordenadas de menor a mayor carga.
+        carga_comp = loadings_df[component]
+        values = carga_comp.reindex(carga_comp.abs().sort_values(ascending=False).head(top_n).index).sort_values()
+        order = [etiqueta(v) for v in values.index]
         pos, neg = values[values >= 0], values[values < 0]
         fig = go.Figure()
         for part, color, label in ((pos, BLUE, "Carga positiva"), (neg, ORANGE, "Carga negativa")):
             fig.add_trace(go.Bar(
-                x=part.values, y=part.index, orientation="h", name=label,
+                x=part.values, y=[etiqueta(v) for v in part.index], orientation="h", name=label,
                 marker=dict(color=color, line=dict(width=1.5, color=INK)),
                 text=[f"{v:+.2f}" for v in part.values], textposition="outside", cliponaxis=False,
                 textfont=dict(size=16, color=INK, family=FONT),
                 hovertemplate="<b>%{y}</b><br>Carga: %{x:+.3f}<extra></extra>",
             ))
         limit = float(values.abs().max()) * 1.2
-        base_layout(fig, chart_height, f"Cargas de {component} ({var_of[component]:.1f} % de la varianza)")
+        base_layout(fig, chart_height, f"Principales cargas de {component} ({var_of[component]:.2f} % de la varianza)")
         fig.update_layout(barmode="overlay", bargap=0.25)
         fig.update_xaxes(
             title_text="<b>Carga</b> (correlación entre la variable y el componente)",
@@ -534,42 +659,45 @@ try:
             zeroline=True, zerolinecolor=INK, zerolinewidth=3,
         )
         fig.update_yaxes(
-            categoryorder="array", categoryarray=order, autorange="reversed",
+            categoryorder="array", categoryarray=order,
             showgrid=False, tickfont=dict(size=17 if top_n <= 18 else 13, color=INK),
         )
         show_chart(fig, f"cargas_{component}")
         st.markdown(
-            f'<p class="figcap"><b>Figura 2.</b> Cargas de las {top_n} variables con mayor valor absoluto en '
-            f"{component} ({var_of[component]:.1f} % de la varianza). La carga es la correlación entre la "
-            f"variable estandarizada y el componente: valores cercanos a ±1 indican que la variable "
-            f"contribuye con fuerza a {component}; el signo indica el sentido de la asociación.</p>",
+            f'<p class="figcap"><b>Figura 4.</b> Principales cargas de {component} '
+            f"({var_of[component]:.2f} % de la varianza): las {top_n} variables con mayor valor absoluto, "
+            f"ordenadas de menor a mayor carga (★ = variable de criminalidad). La carga es el autovector multiplicado "
+            f"por la raíz del autovalor, es decir, la correlación entre la variable estandarizada y el componente; "
+            f"el signo indica el sentido de la asociación, no una diferencia de naturaleza.</p>",
             unsafe_allow_html=True,
         )
     with col_guide2:
         render_guide([component])
 
-    # ------------------------------ 3. Biplot ------------------------------
+    # ------------------------------ 4. Biplot ------------------------------
     st.markdown(
-        '<div class="section-h" style="margin-top:2.4rem;">3. Biplot: comunidades y variables en un mismo plano</div>',
+        '<div class="section-h" style="margin-top:2.4rem;">4. Biplot de cargas</div>',
         unsafe_allow_html=True,
     )
+    MODO_X = "Solo según el eje X"
     MODO_EQUIL = "Equilibrado (mitad por componente)"
     MODO_PLANO = "Mejor representadas en el plano"
-    MODO_X = "Solo según el eje X"
     MODO_Y = "Solo según el eje Y"
+    ESTILO_NB = "Solo cargas (como en el notebook)"
+    ESTILO_COM = "Cargas + comunidades"
     bc1, bc2, bc3 = st.columns([1, 1, 1.8])
     bx = bc1.selectbox("Eje X", components, index=0, key="bip_x")
-    by = bc2.selectbox("Eje Y", components, index=1 if n_components > 1 else 0, key="bip_y")
+    by = bc2.selectbox("Eje Y", components, index=1 if k > 1 else 0, key="bip_y")
     modo = bc3.selectbox(
-        "Elegir las flechas según", [MODO_EQUIL, MODO_PLANO, MODO_X, MODO_Y], index=0, key="bip_modo",
+        "Elegir las flechas según", [MODO_X, MODO_EQUIL, MODO_PLANO, MODO_Y], index=0, key="bip_modo",
     )
     max_vec = min(30, len(X.columns))
-    bc4, bc5 = st.columns([2.4, 1.2])
+    bc4, bc5 = st.columns([2.4, 2])
     n_vec = bc4.slider(
         "Variables (flechas)", min_value=min(5, max_vec), max_value=max_vec,
-        value=min(12, max_vec), key="bip_n",
+        value=min(TOP_N_DEFECTO, max_vec), key="bip_n",
     )
-    show_pts = bc5.checkbox("Mostrar comunidades", value=True, key="bip_pts")
+    estilo = bc5.selectbox("Estilo", [ESTILO_NB, ESTILO_COM], index=0, key="bip_estilo")
 
     col_chart3, col_guide3 = st.columns([3.2, 1.25], gap="medium")
     with col_chart3:
@@ -580,10 +708,10 @@ try:
             reach = np.hypot(lx, ly)
             if modo == MODO_X:
                 top_vars = list(lx.abs().sort_values(ascending=False).head(n_vec).index)
-                desc_modo = f"con mayor carga en {bx}"
+                desc_modo = f"con mayor carga absoluta en {bx}"
             elif modo == MODO_Y:
                 top_vars = list(ly.abs().sort_values(ascending=False).head(n_vec).index)
-                desc_modo = f"con mayor carga en {by}"
+                desc_modo = f"con mayor carga absoluta en {by}"
             elif modo == MODO_PLANO:
                 top_vars = list(reach.sort_values(ascending=False).head(n_vec).index)
                 desc_modo = "mejor representadas en este plano"
@@ -595,14 +723,74 @@ try:
                         break
                     if v not in top_vars:
                         top_vars.append(v)
-                desc_modo = f"con mayor carga en {bx} y en {by} (mitad según cada componente)"
-            sx, sy = scores_df[bx].to_numpy(), scores_df[by].to_numpy()
-            # Las flechas se escalan (con un único factor) para que quepan en la nube de puntos.
-            ref = min(np.percentile(np.abs(sx), 98), np.percentile(np.abs(sy), 98))
-            scale = 0.9 * ref / float(reach[top_vars].max())
+                desc_modo = f"con mayor carga absoluta en {bx} y en {by} (mitad según cada componente)"
 
             fig = go.Figure()
-            if show_pts:
+
+            if estilo == ESTILO_NB:
+                # Mismo procedimiento que el notebook: coordenadas = cargas x (1 / máximo absoluto),
+                # color según el signo de la carga sobre el eje horizontal, límites simétricos de 1,25.
+                coords = np.column_stack([lx[top_vars].to_numpy(), ly[top_vars].to_numpy()])
+                maximo = float(np.max(np.abs(coords)))
+                escala = 1.0 / maximo if maximo > 0 else 1.0
+                for sign_pos, color, label in (
+                    (True, BLUE, f"Carga positiva en {bx}"),
+                    (False, ORANGE, f"Carga negativa en {bx}"),
+                ):
+                    names = [v for v in top_vars if (lx[v] >= 0) == sign_pos]
+                    if not names:
+                        continue
+                    tx, ty = lx[names].to_numpy() * escala, ly[names].to_numpy() * escala
+                    for a, b in zip(tx, ty):
+                        fig.add_annotation(
+                            x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
+                            showarrow=True, arrowhead=3, arrowsize=1.3, arrowwidth=2.5,
+                            arrowcolor=color, text="",
+                        )
+                    positions = [
+                        ("top" if b >= 0 else "bottom") + (" right" if a >= 0 else " left")
+                        for a, b in zip(tx, ty)
+                    ]
+                    fig.add_trace(go.Scatter(
+                        x=tx, y=ty, mode="markers+text", name=label,
+                        text=[etiqueta(n) for n in names], textposition=positions,
+                        textfont=dict(size=15, color=color, family=FONT),
+                        marker=dict(
+                            size=[13 if n in target_set else 8 for n in names], color=color,
+                            symbol=["diamond" if n in target_set else "circle" for n in names],
+                            line=dict(width=1.5, color=INK),
+                        ),
+                        customdata=np.column_stack([lx[names].to_numpy(), ly[names].to_numpy()]),
+                        hovertemplate=(
+                            "<b>%{text}</b><br>"
+                            f"Carga en {bx}: %{{customdata[0]:+.3f}}<br>"
+                            f"Carga en {by}: %{{customdata[1]:+.3f}}<extra></extra>"
+                        ),
+                    ))
+                base_layout(fig, chart_height, f"Biplot de cargas: {bx} y {by}")
+                fig.update_xaxes(
+                    title_text=f"<b>Carga sobre {bx}</b> ({var_of[bx]:.2f} % de varianza, escalada)",
+                    range=[-1.25, 1.25], zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
+                )
+                fig.update_yaxes(
+                    title_text=f"<b>Carga sobre {by}</b> ({var_of[by]:.2f} % de varianza, escalada)",
+                    range=[-1.25, 1.25], zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
+                    scaleanchor="x", scaleratio=1,
+                )
+                caption = (
+                    f'<p class="figcap"><b>Figura 5.</b> Biplot de cargas de {bx} y {by}. Cada flecha es una de las '
+                    f"{len(top_vars)} variables {desc_modo}; sus coordenadas son las cargas multiplicadas por 1/máx. "
+                    f"(la coordenada mayor vale 1). Azul: carga positiva en {bx}; naranja: negativa; rombo y ★: "
+                    f"variable de criminalidad. Con los ejes a la misma escala, el ángulo entre dos flechas aproxima "
+                    f"la correlación entre sus variables (pequeño: positiva; cercano a 90°: sin relación en este "
+                    f"plano; cercano a 180°: negativa). Interprete conjuntos de variables, no el signo aislado: "
+                    f"el signo de un componente puede invertirse sin cambiar la solución.</p>"
+                )
+            else:
+                sx, sy = scores_df[bx].to_numpy(), scores_df[by].to_numpy()
+                # Las flechas se escalan (con un único factor) para que quepan en la nube de puntos.
+                ref = min(np.percentile(np.abs(sx), 98), np.percentile(np.abs(sy), 98))
+                scale = 0.9 * ref / float(reach[top_vars].max())
                 fig.add_trace(go.Scatter(
                     x=sx, y=sy, mode="markers", name="Comunidades",
                     text=scores_df["Comunidad"],
@@ -612,97 +800,100 @@ try:
                         f"{bx}: %{{x:.2f}}<br>{by}: %{{y:.2f}}<extra></extra>"
                     ),
                 ))
-            for is_target, color, label in (
-                (False, INK, "Variable explicativa"),
-                (True, ORANGE, "Variable de criminalidad (target)"),
-            ):
-                names = [v for v in top_vars if (v in target_set) == is_target]
-                if not names:
-                    continue
-                tx, ty = lx[names].to_numpy() * scale, ly[names].to_numpy() * scale
-                for a, b in zip(tx, ty):
-                    fig.add_annotation(
-                        x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
-                        showarrow=True, arrowhead=3, arrowsize=1.3, arrowwidth=2.5,
-                        arrowcolor=color, text="",
-                    )
-                positions = [
-                    ("top" if b >= 0 else "bottom") + (" right" if a >= 0 else " left")
-                    for a, b in zip(tx, ty)
-                ]
-                fig.add_trace(go.Scatter(
-                    x=tx, y=ty, mode="markers+text", name=label,
-                    text=[("★ " if is_target else "") + n for n in names],
-                    textposition=positions,
-                    textfont=dict(size=15, color=color, family=FONT),
-                    marker=dict(size=8, color=color),
-                    customdata=np.column_stack([lx[names].to_numpy(), ly[names].to_numpy()]),
-                    hovertemplate=(
-                        "<b>%{text}</b><br>"
-                        f"Carga en {bx}: %{{customdata[0]:+.3f}}<br>"
-                        f"Carga en {by}: %{{customdata[1]:+.3f}}<extra></extra>"
-                    ),
-                ))
-            base_layout(fig, chart_height, f"Biplot: {bx} vs. {by}")
-            fig.update_xaxes(
-                title_text=f"<b>{bx}</b> ({var_of[bx]:.1f} % de la varianza)",
-                zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
-            )
-            fig.update_yaxes(
-                title_text=f"<b>{by}</b> ({var_of[by]:.1f} % de la varianza)",
-                zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
-                scaleanchor="x", scaleratio=1,
-            )
+                for is_target, color, label in (
+                    (False, INK, "Variable explicativa"),
+                    (True, ORANGE, "Variable de criminalidad (target)"),
+                ):
+                    names = [v for v in top_vars if (v in target_set) == is_target]
+                    if not names:
+                        continue
+                    tx, ty = lx[names].to_numpy() * scale, ly[names].to_numpy() * scale
+                    for a, b in zip(tx, ty):
+                        fig.add_annotation(
+                            x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
+                            showarrow=True, arrowhead=3, arrowsize=1.3, arrowwidth=2.5,
+                            arrowcolor=color, text="",
+                        )
+                    positions = [
+                        ("top" if b >= 0 else "bottom") + (" right" if a >= 0 else " left")
+                        for a, b in zip(tx, ty)
+                    ]
+                    fig.add_trace(go.Scatter(
+                        x=tx, y=ty, mode="markers+text", name=label,
+                        text=[etiqueta(n) for n in names], textposition=positions,
+                        textfont=dict(size=15, color=color, family=FONT),
+                        marker=dict(size=8, color=color),
+                        customdata=np.column_stack([lx[names].to_numpy(), ly[names].to_numpy()]),
+                        hovertemplate=(
+                            "<b>%{text}</b><br>"
+                            f"Carga en {bx}: %{{customdata[0]:+.3f}}<br>"
+                            f"Carga en {by}: %{{customdata[1]:+.3f}}<extra></extra>"
+                        ),
+                    ))
+                base_layout(fig, chart_height, f"Biplot: {bx} vs. {by}")
+                fig.update_xaxes(
+                    title_text=f"<b>{bx}</b> ({var_of[bx]:.2f} % de varianza)",
+                    zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
+                )
+                fig.update_yaxes(
+                    title_text=f"<b>{by}</b> ({var_of[by]:.2f} % de varianza)",
+                    zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
+                    scaleanchor="x", scaleratio=1,
+                )
+                caption = (
+                    f'<p class="figcap"><b>Figura 5.</b> Biplot de {bx} y {by}: los puntos son comunidades '
+                    f"y las flechas son las {len(top_vars)} variables {desc_modo} "
+                    f"(las de criminalidad llevan ★ y van en naranja). Los ejes tienen la misma escala, de modo que "
+                    f"el ángulo entre dos flechas aproxima la correlación entre sus variables. La longitud de las "
+                    f"flechas está escalada para visualizarla junto a las comunidades; una comunidad se ubica hacia "
+                    f"donde apuntan las variables en las que es alta.</p>"
+                )
             show_chart(fig, f"biplot_{bx}_{by}")
-            st.markdown(
-                f'<p class="figcap"><b>Figura 3.</b> Biplot de {bx} y {by}: los puntos son comunidades '
-                f"y las flechas son las {len(top_vars)} variables {desc_modo} "
-                f"(las de criminalidad llevan ★ y van en naranja). Los ejes tienen la misma escala, de modo que "
-                f"el ángulo entre dos flechas aproxima la correlación entre sus variables: un ángulo pequeño "
-                f"indica correlación positiva, cercano a 90° ausencia de relación en este plano y cercano a 180° "
-                f"correlación negativa. Una flecha larga indica que la variable está bien representada por "
-                f"estos dos componentes. La longitud de las flechas está escalada para visualizarla junto a las "
-                f"comunidades; una comunidad se ubica hacia donde apuntan las variables en las que es alta.</p>",
-                unsafe_allow_html=True,
-            )
+            st.markdown(caption, unsafe_allow_html=True)
     with col_guide3:
         render_guide([bx, by])
 
     # ------------------------------ Datos y metodología ------------------------------
     with st.expander("Datos y metodología", expanded=False):
+        targets_txt = ", ".join(TARGETS_INCLUIDOS)
         st.markdown(
             f"""
 **Fuente.** UCI Machine Learning Repository, *Communities and Crime Unnormalized* (id. 211).
 
-**Variables consideradas.** Se parte de {fmt_int(n_candidatas)} variables numéricas: predictoras y de
-criminalidad (targets). Se excluyen los identificadores (nombre de la comunidad, estado, códigos de condado y
-comunidad, partición *fold*).
+**Matriz de partida.** {fmt_int(features.shape[1])} variables explicativas más las variables de criminalidad
+(targets) incluidas en el análisis: {targets_txt}. En total, {fmt_int(n_inicial)} variables.
 
-**Filtro de datos faltantes.** Se eliminan las variables con más de {MAX_FALTANTES * 100:.0f} % de datos
-faltantes, tanto predictoras como de criminalidad: {fmt_int(len(too_missing))} variables eliminadas
-({fmt_int(n_removed_targets)} de criminalidad). Se eliminan también {fmt_int(len(const_cols))} variables constantes.
-Quedan {fmt_int(X.shape[1])} variables, de las cuales {fmt_int(n_targets_kept)} son de criminalidad.
+**Preparación (celda 5 del notebook).**
+1. Se excluyen identificadores o metadatos: {", ".join(COLUMNAS_IDENTIFICADORAS) or "ninguno"}.
+2. Se eliminan las variables con más de {MAX_FALTANTES * 100:.0f} % de datos faltantes, tanto explicativas como
+de criminalidad: {fmt_int(len(elim_por_na))} variables.
+3. Se eliminan las variables redundantes o no deseadas: {", ".join(COLUMNAS_REDUNDANTES) or "ninguna"}.
+4. Los datos faltantes restantes ({fmt_int(total_faltantes_imputados)} celdas) se imputan con la mediana de cada
+variable y luego cada variable se estandariza (media 0, desviación 1).
 
-**Imputación.** Los datos faltantes restantes ({missing_after:.2f} % de las celdas de las variables conservadas)
-se reemplazan por la mediana de cada variable. No se elimina ninguna comunidad.
+Quedan {fmt_int(X.shape[1])} variables, de las cuales {fmt_int(n_targets_kept)} son de criminalidad. No se
+elimina ninguna comunidad (n = {fmt_int(X.shape[0])}).
 
-**Estandarización y PCA.** Las variables se estandarizan (media 0, desviación 1) y se aplica PCA sobre la matriz
-de correlaciones. Las cargas se calculan como vectores propios × √(autovalor), equivalentes a la correlación
-entre cada variable y cada componente.
+**PCA (celda 6 del notebook).** Se calculan todos los componentes (`n_components=None`, `random_state={RANDOM_STATE}`).
+La varianza explicada y acumulada se muestra en la sección 1. Las cargas se calculan como autovectores ×
+√autovalor, equivalentes a la correlación entre cada variable y cada componente. En los gráficos de cargas y
+en el biplot se muestran las {TOP_N_DEFECTO} variables de mayor carga absoluta (ajustable).
 
-**Biplot.** Superpone las puntuaciones de las comunidades y las cargas de las variables en un mismo plano de dos
-componentes. Las variables mostradas son las de mayor longitud de carga en ese plano, y las flechas se multiplican por
-un único factor para ajustarse a la escala de las puntuaciones.
+**Biplot.** El estilo «Solo cargas» reproduce el del notebook: las coordenadas se multiplican por 1/máx. y los
+límites son ±1,25. El estilo «Cargas + comunidades» superpone las puntuaciones de las comunidades.
 
 **Elipse de confianza.** Región del 95 % bajo normalidad bivariada de las puntuaciones; los puntos fuera de ella
 son candidatos a observaciones atípicas en ese plano.
+
+**Nota metodológica.** La imputación y la estandarización se realizan sobre el conjunto completo; es razonable para
+una exploración descriptiva, pero para modelos predictivos debería ajustarse solo con datos de entrenamiento.
             """
         )
-        if len(removed_df):
-            st.markdown("**Variables eliminadas por exceso de datos faltantes**")
-            st.dataframe(removed_df, hide_index=True)
+        if len(descartadas_df):
+            st.markdown("**Variables descartadas**")
+            st.markdown(html_table(descartadas_df), unsafe_allow_html=True)
         else:
-            st.markdown("Ninguna variable superó el umbral de datos faltantes.")
+            st.markdown("No se descartó ninguna variable.")
 
 except Exception as error:
     st.error(f"No se pudo cargar o procesar el dataset: {error}")
