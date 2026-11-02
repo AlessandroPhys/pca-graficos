@@ -26,7 +26,7 @@ N_COMPONENTES = 7                  # componentes que se muestran (PC1–PC7)
 TOP_N_DEFECTO = 15                 # variables por gráfico de cargas / biplot
 MAX_FALTANTES = 0.50               # se eliminan las variables con más de 50 % de faltantes
 COLUMNAS_IDENTIFICADORAS = ["State"]          # identificadores o metadatos
-COLUMNAS_REDUNDANTES = ["kidsBornNevrMarr"]   # redundantes / no deseadas
+COLUMNAS_REDUNDANTES = ["kidsBornNevrMarr","pop"]   # redundantes / no deseadas
 TARGETS_INCLUIDOS = ["violentPerPop", "nonViolPerPop"]  # targets que entran al análisis
 
 # ==========================================================================
