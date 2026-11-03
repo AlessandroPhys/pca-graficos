@@ -160,6 +160,10 @@ h1 {
 }
 [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p { color: #FFFFFF; }
 
+/* Interruptor de vectores alineado con los selectores */
+[data-testid="stToggle"], [data-testid="stCheckbox"] { margin-top: 1.7rem; }
+[data-testid="stToggle"] p, [data-testid="stCheckbox"] p { font-weight: 700; color: %INK%; }
+
 /* Etiquetas y listas desplegables con buen contraste */
 [data-testid="stWidgetLabel"] { justify-content: center; }
 [data-testid="stWidgetLabel"] p { text-align: center; font-weight: 700; color: %INK%; font-size: 1rem; }
@@ -457,10 +461,7 @@ try:
     stats = [
         (fmt_int(X.shape[0]), "Observaciones (n)"),
         (fmt_int(X.shape[1]), "Variables analizadas (p)"),
-        (fmt_int(n_total), "Componentes calculadas"),
         (f"{100 * acumulada[k - 1]:.1f} %", f"Varianza acumulada PC1–PC{k}"),
-        (fmt_int(len(elim_por_na)), f"Variables excluidas (> {MAX_FALTANTES * 100:.0f} % faltantes)"),
-        (f"{n_targets_kept} de {len(target_set)}", "Variables de criminalidad conservadas"),
     ]
     st.markdown(
         '<div class="stats">'
@@ -547,11 +548,17 @@ try:
     t2.markdown('<div class="tabla-titulo">Componentes necesarias para alcanzar cada umbral</div>'
                 + html_table(umbrales_df), unsafe_allow_html=True)
 
-    # ------------------------------ 2. Proyección PCA ------------------------------
+    # ------------------------------ 2. Proyección PCA (con vectores opcionales) ------------------------------
     st.markdown(
-        '<div class="section-h" style="margin-top:2.4rem;">2. Proyección de las comunidades en el espacio de componentes</div>',
+        '<div class="section-h" style="margin-top:2.4rem;">2. Proyección de las comunidades y vectores de las variables</div>',
         unsafe_allow_html=True,
     )
+    MODO_EQUIL = "Equilibrado (mitad por eje)"
+    MODO_X = "Según el eje X"
+    MODO_Y = "Según el eje Y"
+    MODO_PLANO = "Mejor representadas en el plano"
+    max_vec = min(30, len(X.columns))
+
     col_x, col_y, col_find = st.columns([1, 1, 1.6])
     x_component = col_x.selectbox("Eje X", components, index=0)
     y_component = col_y.selectbox("Eje Y", components, index=1 if k > 1 else 0)
@@ -562,24 +569,45 @@ try:
         placeholder="Escriba para buscar…",
     )
 
+    vc1, vc2, vc3, vc4 = st.columns([1.1, 2, 1.8, 1.6])
+    show_vec = vc1.toggle("Mostrar vectores", value=False, key="vec_on")
+    if show_vec:
+        modo = vc2.selectbox(
+            "Variables según el componente",
+            [MODO_EQUIL, MODO_X, MODO_Y, MODO_PLANO], index=0, key="vec_modo",
+            help="Elige de qué componente se toman las variables que se dibujan como flechas.",
+        )
+        n_vec = vc3.slider(
+            "Variables (flechas)", min_value=min(5, max_vec), max_value=max_vec,
+            value=min(TOP_N_DEFECTO, max_vec), key="vec_n",
+        )
+        escala_flechas = vc4.slider(
+            "Tamaño de las flechas (%)", min_value=50, max_value=200, value=100, step=10, key="vec_escala",
+        ) / 100
+
     col_chart, col_guide = st.columns([3.2, 1.25], gap="medium")
     with col_chart:
         if x_component == y_component:
             st.warning("Seleccione componentes distintos para los ejes X e Y.")
         else:
-            fig = px.scatter(
-                scores_df, x=x_component, y=y_component,
-                hover_name="Comunidad", render_mode="svg",
-            )
-            fig.update_traces(
-                marker=dict(size=9, color=BLUE, opacity=0.72, line=dict(width=0.8, color=WHITE)),
+            sx, sy = scores_df[x_component].to_numpy(), scores_df[y_component].to_numpy()
+            fig = go.Figure()
+
+            # Comunidades: más tenues cuando hay vectores, para que las flechas se vean bien.
+            fig.add_trace(go.Scatter(
+                x=sx, y=sy, mode="markers", name="Comunidades",
+                text=scores_df["Comunidad"],
+                marker=dict(
+                    size=6 if show_vec else 9, color=BLUE, opacity=0.22 if show_vec else 0.72,
+                    line=dict(width=0 if show_vec else 0.8, color=WHITE),
+                ),
                 hovertemplate=(
-                    "<b>%{hovertext}</b><br>"
+                    "<b>%{text}</b><br>"
                     f"{x_component}: %{{x:.2f}}<br>"
                     f"{y_component}: %{{y:.2f}}<extra></extra>"
                 ),
-                name="Comunidades", showlegend=True,
-            )
+            ))
+
             # Elipse de confianza del 95 % (aprox. normal bivariada): chi2(0.95, 2 g.l.) = -2 ln(0.05)
             ix, iy = components.index(x_component), components.index(y_component)
             radius = np.sqrt(-2 * np.log(0.05))
@@ -588,8 +616,10 @@ try:
                 x=radius * np.sqrt(pca.explained_variance_[ix]) * np.cos(t),
                 y=radius * np.sqrt(pca.explained_variance_[iy]) * np.sin(t),
                 mode="lines", name="Elipse de confianza del 95 %",
-                line=dict(color=INK, width=2.5, dash="dash"), hoverinfo="skip",
+                line=dict(color="#64748B" if show_vec else INK, width=2 if show_vec else 2.5, dash="dash"),
+                hoverinfo="skip",
             ))
+
             if highlighted:
                 sel = scores_df[scores_df["Comunidad"] == highlighted]
                 fig.add_trace(go.Scatter(
@@ -604,7 +634,78 @@ try:
                     ),
                     showlegend=False,
                 ))
-            base_layout(fig, chart_height, f"Proyección PCA: {x_component} vs. {y_component}")
+
+            desc_modo = ""
+            top_vars = []
+            if show_vec:
+                lx, ly = loadings_df[x_component], loadings_df[y_component]
+                reach = np.hypot(lx, ly)
+                if modo == MODO_X:
+                    top_vars = list(lx.abs().sort_values(ascending=False).head(n_vec).index)
+                    desc_modo = f"con mayor carga absoluta en {x_component}"
+                elif modo == MODO_Y:
+                    top_vars = list(ly.abs().sort_values(ascending=False).head(n_vec).index)
+                    desc_modo = f"con mayor carga absoluta en {y_component}"
+                elif modo == MODO_PLANO:
+                    top_vars = list(reach.sort_values(ascending=False).head(n_vec).index)
+                    desc_modo = "mejor representadas en este plano"
+                else:
+                    # Mitad de las flechas según cada componente (sin repetir variables).
+                    top_vars = list(lx.abs().sort_values(ascending=False).head(n_vec - n_vec // 2).index)
+                    for v in ly.abs().sort_values(ascending=False).index:
+                        if len(top_vars) >= n_vec:
+                            break
+                        if v not in top_vars:
+                            top_vars.append(v)
+                    desc_modo = f"con mayor carga absoluta en {x_component} y en {y_component} (mitad según cada eje)"
+
+                # Un único factor escala las flechas para que quepan en la nube de puntos.
+                ref = min(np.percentile(np.abs(sx), 98), np.percentile(np.abs(sy), 98))
+                scale = 0.9 * ref * escala_flechas / float(reach[top_vars].max())
+                for is_target, color, label in (
+                    (False, INK, "Variable explicativa"),
+                    (True, ORANGE, "Variable de criminalidad (target)"),
+                ):
+                    names = [v for v in top_vars if (v in target_set) == is_target]
+                    if not names:
+                        continue
+                    tx, ty = lx[names].to_numpy() * scale, ly[names].to_numpy() * scale
+                    for a, b, nombre in zip(tx, ty, names):
+                        # Borde blanco (flecha ancha por detrás) + flecha de color encima.
+                        for width, arrow_color in ((8, WHITE), (4, color)):
+                            fig.add_annotation(
+                                x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
+                                showarrow=True, arrowhead=3, arrowsize=1.2, arrowwidth=width,
+                                arrowcolor=arrow_color, text="",
+                            )
+                        # Etiqueta con fondo blanco para que se lea sobre los puntos.
+                        fig.add_annotation(
+                            x=a, y=b, xref="x", yref="y", text=f"<b>{etiqueta(nombre)}</b>",
+                            showarrow=False, font=dict(size=15, color=color, family=FONT),
+                            xanchor="left" if a >= 0 else "right",
+                            yanchor="bottom" if b >= 0 else "top",
+                            xshift=6 if a >= 0 else -6, yshift=4 if b >= 0 else -4,
+                            bgcolor="rgba(255,255,255,0.92)", bordercolor=color, borderwidth=1.5, borderpad=2,
+                        )
+                    # Puntas de las flechas: aportan la leyenda y el cuadro emergente con las cargas.
+                    fig.add_trace(go.Scatter(
+                        x=tx, y=ty, mode="markers", name=label,
+                        marker=dict(
+                            size=[13 if n in target_set else 10 for n in names], color=color,
+                            symbol=["diamond" if n in target_set else "circle" for n in names],
+                            line=dict(width=2, color=WHITE),
+                        ),
+                        text=[etiqueta(n) for n in names],
+                        customdata=np.column_stack([lx[names].to_numpy(), ly[names].to_numpy()]),
+                        hovertemplate=(
+                            "<b>%{text}</b><br>"
+                            f"Carga en {x_component}: %{{customdata[0]:+.3f}}<br>"
+                            f"Carga en {y_component}: %{{customdata[1]:+.3f}}<extra></extra>"
+                        ),
+                    ))
+
+            titulo = f"Proyección PCA: {x_component} vs. {y_component}" + (" y vectores" if show_vec else "")
+            base_layout(fig, chart_height, titulo)
             fig.update_xaxes(
                 title_text=f"<b>{x_component}</b> ({var_of[x_component]:.2f} % de varianza)",
                 zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
@@ -612,17 +713,27 @@ try:
             fig.update_yaxes(
                 title_text=f"<b>{y_component}</b> ({var_of[y_component]:.2f} % de varianza)",
                 zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
+                **(dict(scaleanchor="x", scaleratio=1) if show_vec else {}),
             )
             show_chart(fig, f"proyeccion_{x_component}_{y_component}")
-            st.markdown(
+
+            caption = (
                 f'<p class="figcap"><b>Figura 3.</b> Proyección de las n = {fmt_int(X.shape[0])} comunidades '
                 f"sobre {x_component} ({var_of[x_component]:.2f} % de la varianza) y {y_component} "
                 f"({var_of[y_component]:.2f} % de la varianza). Cada punto es una comunidad; al pasar el "
                 f"puntero se muestra su nombre. La elipse discontinua delimita la región esperada del 95 % "
-                f"bajo normalidad bivariada, y las líneas negras marcan el origen (puntuación 0) de cada eje. "
-                f"Pares usados en el notebook: PC1–PC2, PC1–PC3, PC2–PC3 y PC3–PC4.</p>",
-                unsafe_allow_html=True,
+                f"bajo normalidad bivariada, y las líneas negras marcan el origen (puntuación 0) de cada eje."
             )
+            if show_vec:
+                caption += (
+                    f" Las flechas son las {len(top_vars)} variables {desc_modo} (las de criminalidad llevan ★ y "
+                    f"van en naranja); los puntos se atenúan para destacarlas. Con los ejes a la misma escala, el "
+                    f"ángulo entre dos flechas aproxima la correlación entre sus variables (pequeño: positiva; "
+                    f"cercano a 90°: sin relación en este plano; cercano a 180°: negativa). La longitud está "
+                    f"escalada para verla junto a las comunidades, y una comunidad se ubica hacia donde apuntan "
+                    f"las variables en las que es alta."
+                )
+            st.markdown(caption + "</p>", unsafe_allow_html=True)
     with col_guide:
         render_guide([x_component, y_component])
 
@@ -682,204 +793,6 @@ try:
     with col_guide2:
         render_guide([component])
 
-    # ------------------------------ 4. Biplot ------------------------------
-    st.markdown(
-        '<div class="section-h" style="margin-top:2.4rem;">4. Biplot de cargas</div>',
-        unsafe_allow_html=True,
-    )
-    MODO_X = "Solo según el eje X"
-    MODO_EQUIL = "Equilibrado (mitad por componente)"
-    MODO_PLANO = "Mejor representadas en el plano"
-    MODO_Y = "Solo según el eje Y"
-    ESTILO_NB = "Solo cargas (como en el notebook)"
-    ESTILO_COM = "Cargas + comunidades"
-    bc1, bc2, bc3 = st.columns([1, 1, 1.8])
-    bx = bc1.selectbox("Eje X", components, index=0, key="bip_x")
-    by = bc2.selectbox("Eje Y", components, index=1 if k > 1 else 0, key="bip_y")
-    modo = bc3.selectbox(
-        "Elegir las flechas según", [MODO_X, MODO_EQUIL, MODO_PLANO, MODO_Y], index=0, key="bip_modo",
-    )
-    max_vec = min(30, len(X.columns))
-    bc4, bc5, bc6 = st.columns([2, 2, 1.8])
-    n_vec = bc4.slider(
-        "Variables (flechas)", min_value=min(5, max_vec), max_value=max_vec,
-        value=min(TOP_N_DEFECTO, max_vec), key="bip_n",
-    )
-    estilo = bc5.selectbox("Estilo", [ESTILO_COM, ESTILO_NB], index=0, key="bip_estilo")
-    if estilo == ESTILO_COM:
-        escala_flechas = bc6.slider(
-            "Tamaño de las flechas (%)", min_value=50, max_value=200, value=100, step=10, key="bip_escala",
-        ) / 100
-    else:
-        escala_flechas = 1.0
-
-    col_chart3, col_guide3 = st.columns([3.2, 1.25], gap="medium")
-    with col_chart3:
-        if bx == by:
-            st.warning("Seleccione componentes distintos para los ejes X e Y del biplot.")
-        else:
-            lx, ly = loadings_df[bx], loadings_df[by]
-            reach = np.hypot(lx, ly)
-            if modo == MODO_X:
-                top_vars = list(lx.abs().sort_values(ascending=False).head(n_vec).index)
-                desc_modo = f"con mayor carga absoluta en {bx}"
-            elif modo == MODO_Y:
-                top_vars = list(ly.abs().sort_values(ascending=False).head(n_vec).index)
-                desc_modo = f"con mayor carga absoluta en {by}"
-            elif modo == MODO_PLANO:
-                top_vars = list(reach.sort_values(ascending=False).head(n_vec).index)
-                desc_modo = "mejor representadas en este plano"
-            else:
-                # Mitad de las flechas según cada componente (sin repetir variables).
-                top_vars = list(lx.abs().sort_values(ascending=False).head(n_vec - n_vec // 2).index)
-                for v in ly.abs().sort_values(ascending=False).index:
-                    if len(top_vars) >= n_vec:
-                        break
-                    if v not in top_vars:
-                        top_vars.append(v)
-                desc_modo = f"con mayor carga absoluta en {bx} y en {by} (mitad según cada componente)"
-
-            fig = go.Figure()
-
-            if estilo == ESTILO_NB:
-                # Mismo procedimiento que el notebook: coordenadas = cargas x (1 / máximo absoluto),
-                # color según el signo de la carga sobre el eje horizontal, límites simétricos de 1,25.
-                coords = np.column_stack([lx[top_vars].to_numpy(), ly[top_vars].to_numpy()])
-                maximo = float(np.max(np.abs(coords)))
-                escala = 1.0 / maximo if maximo > 0 else 1.0
-                for sign_pos, color, label in (
-                    (True, BLUE, f"Carga positiva en {bx}"),
-                    (False, ORANGE, f"Carga negativa en {bx}"),
-                ):
-                    names = [v for v in top_vars if (lx[v] >= 0) == sign_pos]
-                    if not names:
-                        continue
-                    tx, ty = lx[names].to_numpy() * escala, ly[names].to_numpy() * escala
-                    for a, b in zip(tx, ty):
-                        fig.add_annotation(
-                            x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
-                            showarrow=True, arrowhead=3, arrowsize=1.3, arrowwidth=2.5,
-                            arrowcolor=color, text="",
-                        )
-                    positions = [
-                        ("top" if b >= 0 else "bottom") + (" right" if a >= 0 else " left")
-                        for a, b in zip(tx, ty)
-                    ]
-                    fig.add_trace(go.Scatter(
-                        x=tx, y=ty, mode="markers+text", name=label,
-                        text=[etiqueta(n) for n in names], textposition=positions,
-                        textfont=dict(size=15, color=color, family=FONT),
-                        marker=dict(
-                            size=[13 if n in target_set else 8 for n in names], color=color,
-                            symbol=["diamond" if n in target_set else "circle" for n in names],
-                            line=dict(width=1.5, color=INK),
-                        ),
-                        customdata=np.column_stack([lx[names].to_numpy(), ly[names].to_numpy()]),
-                        hovertemplate=(
-                            "<b>%{text}</b><br>"
-                            f"Carga en {bx}: %{{customdata[0]:+.3f}}<br>"
-                            f"Carga en {by}: %{{customdata[1]:+.3f}}<extra></extra>"
-                        ),
-                    ))
-                base_layout(fig, chart_height, f"Biplot de cargas: {bx} y {by}")
-                fig.update_xaxes(
-                    title_text=f"<b>Carga sobre {bx}</b> ({var_of[bx]:.2f} % de varianza, escalada)",
-                    range=[-1.25, 1.25], zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
-                )
-                fig.update_yaxes(
-                    title_text=f"<b>Carga sobre {by}</b> ({var_of[by]:.2f} % de varianza, escalada)",
-                    range=[-1.25, 1.25], zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
-                    scaleanchor="x", scaleratio=1,
-                )
-                caption = (
-                    f'<p class="figcap"><b>Figura 5.</b> Biplot de cargas de {bx} y {by}. Cada flecha es una de las '
-                    f"{len(top_vars)} variables {desc_modo}; sus coordenadas son las cargas multiplicadas por 1/máx. "
-                    f"(la coordenada mayor vale 1). Azul: carga positiva en {bx}; naranja: negativa; rombo y ★: "
-                    f"variable de criminalidad. Con los ejes a la misma escala, el ángulo entre dos flechas aproxima "
-                    f"la correlación entre sus variables (pequeño: positiva; cercano a 90°: sin relación en este "
-                    f"plano; cercano a 180°: negativa). Interprete conjuntos de variables, no el signo aislado: "
-                    f"el signo de un componente puede invertirse sin cambiar la solución.</p>"
-                )
-            else:
-                sx, sy = scores_df[bx].to_numpy(), scores_df[by].to_numpy()
-                # Las flechas se escalan (con un único factor) para que quepan en la nube de puntos.
-                ref = min(np.percentile(np.abs(sx), 98), np.percentile(np.abs(sy), 98))
-                scale = 0.9 * ref * escala_flechas / float(reach[top_vars].max())
-                # Comunidades: puntos pequeños y semitransparentes para que no tapen las flechas.
-                fig.add_trace(go.Scatter(
-                    x=sx, y=sy, mode="markers", name="Comunidades",
-                    text=scores_df["Comunidad"],
-                    marker=dict(size=6.5, color=BLUE, opacity=0.40),
-                    hovertemplate=(
-                        "<b>%{text}</b><br>"
-                        f"{bx}: %{{x:.2f}}<br>{by}: %{{y:.2f}}<extra></extra>"
-                    ),
-                ))
-                for is_target, color, label in (
-                    (False, INK, "Variable explicativa"),
-                    (True, ORANGE, "Variable de criminalidad (target)"),
-                ):
-                    names = [v for v in top_vars if (v in target_set) == is_target]
-                    if not names:
-                        continue
-                    tx, ty = lx[names].to_numpy() * scale, ly[names].to_numpy() * scale
-                    for a, b, nombre in zip(tx, ty, names):
-                        # Borde blanco (flecha ancha por detrás) + flecha de color encima.
-                        for width, arrow_color in ((8, WHITE), (4, color)):
-                            fig.add_annotation(
-                                x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
-                                showarrow=True, arrowhead=3, arrowsize=1.2, arrowwidth=width,
-                                arrowcolor=arrow_color, text="",
-                            )
-                        # Etiqueta con fondo blanco para que se lea sobre los puntos.
-                        fig.add_annotation(
-                            x=a, y=b, xref="x", yref="y", text=f"<b>{etiqueta(nombre)}</b>",
-                            showarrow=False, font=dict(size=15, color=color, family=FONT),
-                            xanchor="left" if a >= 0 else "right",
-                            yanchor="bottom" if b >= 0 else "top",
-                            xshift=6 if a >= 0 else -6, yshift=4 if b >= 0 else -4,
-                            bgcolor="rgba(255,255,255,0.92)", bordercolor=color, borderwidth=1.5, borderpad=2,
-                        )
-                    # Puntas de las flechas: aportan la leyenda y el cuadro emergente con las cargas.
-                    fig.add_trace(go.Scatter(
-                        x=tx, y=ty, mode="markers", name=label,
-                        marker=dict(
-                            size=[13 if n in target_set else 10 for n in names], color=color,
-                            symbol=["diamond" if n in target_set else "circle" for n in names],
-                            line=dict(width=2, color=WHITE),
-                        ),
-                        text=[etiqueta(n) for n in names],
-                        customdata=np.column_stack([lx[names].to_numpy(), ly[names].to_numpy()]),
-                        hovertemplate=(
-                            "<b>%{text}</b><br>"
-                            f"Carga en {bx}: %{{customdata[0]:+.3f}}<br>"
-                            f"Carga en {by}: %{{customdata[1]:+.3f}}<extra></extra>"
-                        ),
-                    ))
-                base_layout(fig, chart_height, f"Biplot: {bx} vs. {by}")
-                fig.update_xaxes(
-                    title_text=f"<b>{bx}</b> ({var_of[bx]:.2f} % de varianza)",
-                    zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
-                )
-                fig.update_yaxes(
-                    title_text=f"<b>{by}</b> ({var_of[by]:.2f} % de varianza)",
-                    zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
-                    scaleanchor="x", scaleratio=1,
-                )
-                caption = (
-                    f'<p class="figcap"><b>Figura 5.</b> Biplot de {bx} y {by}: los puntos tenues son las '
-                    f"puntuaciones (scores) de las comunidades y las flechas son las {len(top_vars)} variables "
-                    f"{desc_modo} (las de criminalidad llevan ★ y van en naranja). Los ejes tienen la misma "
-                    f"escala, de modo que el ángulo entre dos flechas aproxima la correlación entre sus variables. "
-                    f"La longitud de las flechas está escalada (factor ajustable) para visualizarla junto a las "
-                    f"comunidades; una comunidad se ubica hacia donde apuntan las variables en las que es alta. "
-                    f"Al pasar el puntero se muestra el nombre de la comunidad o las cargas de la variable.</p>"
-                )
-            show_chart(fig, f"biplot_{bx}_{by}")
-            st.markdown(caption, unsafe_allow_html=True)
-    with col_guide3:
-        render_guide([bx, by])
-
     # ------------------------------ Datos y metodología ------------------------------
     with st.expander("Datos y metodología", expanded=False):
         targets_txt = ", ".join(targets_sel.columns)
@@ -908,8 +821,10 @@ La varianza explicada y acumulada se muestra en la sección 1. Las cargas se cal
 √autovalor, equivalentes a la correlación entre cada variable y cada componente. En los gráficos de cargas y
 en el biplot se muestran las {TOP_N_DEFECTO} variables de mayor carga absoluta (ajustable).
 
-**Biplot.** El estilo «Solo cargas» reproduce el del notebook: las coordenadas se multiplican por 1/máx. y los
-límites son ±1,25. El estilo «Cargas + comunidades» superpone las puntuaciones de las comunidades.
+**Vectores de variables (biplot).** Se activan en la sección 2 y se dibujan sobre la proyección de las comunidades.
+Las flechas son las variables de mayor carga absoluta según el componente elegido (eje X, eje Y, mitad de cada uno, o las
+mejor representadas en el plano), con coordenadas iguales a sus cargas multiplicadas por un factor común para que quepan
+en la nube de puntos. El modo «Según el eje X» reproduce el criterio del notebook.
 
 **Elipse de confianza.** Región del 95 % bajo normalidad bivariada de las puntuaciones; los puntos fuera de ella
 son candidatos a observaciones atípicas en ese plano.
