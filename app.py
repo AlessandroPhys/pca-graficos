@@ -27,11 +27,10 @@ TOP_N_DEFECTO = 15                 # variables por gráfico de cargas / biplot
 MAX_FALTANTES = 0.50               # se eliminan las variables con más de 50 % de faltantes
 COLUMNAS_IDENTIFICADORAS = ["State"]          # identificadores o metadatos
 COLUMNAS_REDUNDANTES = ["kidsBornNevrMarr"]   # redundantes / no deseadas
-# Variables de criminalidad (targets) que se suman a la matriz X. Como solo se hace un PCA (no hay
-# variable objetivo), se incorporan como una variable más y pasan por los mismos filtros.
-#   None -> todas las variables de criminalidad del dataset (18)
-#   o una lista, por ejemplo ["violentPerPop", "nonViolPerPop"]
-TARGETS_INCLUIDOS = None
+# Variables de criminalidad (targets): como solo se hace un PCA (no hay variable objetivo), se suman a
+# la matriz X como una variable más y pasan por los mismos filtros. Las dos últimas (tasas globales de
+# criminalidad violenta y no violenta) se reservan como etiquetas y NO entran al PCA.
+TARGETS_COMO_ETIQUETA = ["violentPerPop", "nonViolPerPop"]
 
 # ==========================================================================
 # GUÍA DE COMPONENTES
@@ -366,10 +365,8 @@ try:
 
     # ==================== CELDA 5 DEL NOTEBOOK: preparar la matriz ====================
     # Variables explicativas + variables de criminalidad (targets): una sola matriz X para el PCA.
-    if TARGETS_INCLUIDOS is None:
-        targets_sel = targets_all
-    else:
-        targets_sel = targets_all[[c for c in TARGETS_INCLUIDOS if c in targets_all.columns]]
+    targets_etiqueta = targets_all[[c for c in TARGETS_COMO_ETIQUETA if c in targets_all.columns]]
+    targets_sel = targets_all.drop(columns=targets_etiqueta.columns)
     target_set = set(targets_sel.columns)
     X = pd.concat([features, targets_sel], axis=1)
     n_inicial = X.shape[1]
@@ -795,8 +792,9 @@ try:
             f"""
 **Fuente.** UCI Machine Learning Repository, *Communities and Crime Unnormalized* (id. 211).
 
-**Matriz de partida.** {fmt_int(features.shape[1])} variables explicativas más las variables de criminalidad
-(targets) incluidas en el análisis: {targets_txt}. En total, {fmt_int(n_inicial)} variables.
+**Matriz de partida.** {fmt_int(features.shape[1])} variables explicativas más {fmt_int(targets_sel.shape[1])}
+variables de criminalidad (targets), todas tratadas por igual: {targets_txt}. En total, {fmt_int(n_inicial)} variables.
+Las tasas globales {", ".join(targets_etiqueta.columns) or "—"} se reservan como etiquetas y no entran al PCA.
 
 **Preparación (celda 5 del notebook).**
 1. Se excluyen identificadores o metadatos: {", ".join(COLUMNAS_IDENTIFICADORAS) or "ninguno"}.
