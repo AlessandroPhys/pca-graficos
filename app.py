@@ -659,7 +659,7 @@ try:
                             top_vars.append(v)
                     desc_modo = f"con mayor carga absoluta en {x_component} y en {y_component} (mitad según cada eje)"
 
-                # Un único factor escala las flechas para que quepan en la nube de puntos.
+                                # Un único factor escala las flechas para que quepan en la nube de puntos.
                 ref = min(np.percentile(np.abs(sx), 98), np.percentile(np.abs(sy), 98))
                 scale = 0.9 * ref * escala_flechas / float(reach[top_vars].max())
                 for is_target, color, label in (
@@ -670,32 +670,23 @@ try:
                     if not names:
                         continue
                     tx, ty = lx[names].to_numpy() * scale, ly[names].to_numpy() * scale
-                    for a, b, nombre in zip(tx, ty, names):
-                        # Borde blanco (flecha ancha por detrás) + flecha de color encima.
-                        for width, arrow_color in ((8, WHITE), (4, color)):
-                            fig.add_annotation(
-                                x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
-                                showarrow=True, arrowhead=3, arrowsize=1.2, arrowwidth=width,
-                                arrowcolor=arrow_color, text="",
-                            )
-                        # Etiqueta con fondo blanco para que se lea sobre los puntos.
+                    # Flecha simple desde el origen
+                    for a, b in zip(tx, ty):
                         fig.add_annotation(
-                            x=a, y=b, xref="x", yref="y", text=f"<b>{etiqueta(nombre)}</b>",
-                            showarrow=False, font=dict(size=15, color=color, family=FONT),
-                            xanchor="left" if a >= 0 else "right",
-                            yanchor="bottom" if b >= 0 else "top",
-                            xshift=6 if a >= 0 else -6, yshift=4 if b >= 0 else -4,
-                            bgcolor="rgba(255,255,255,0.92)", bordercolor=color, borderwidth=1.5, borderpad=2,
+                            x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
+                            showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=2,
+                            arrowcolor=color, text="",
                         )
-                    # Puntas de las flechas: aportan la leyenda y el cuadro emergente con las cargas.
+                    # Nombre de la variable como texto simple junto a la punta
+                    positions = [
+                        ("top" if b >= 0 else "bottom") + (" right" if a >= 0 else " left")
+                        for a, b in zip(tx, ty)
+                    ]
                     fig.add_trace(go.Scatter(
-                        x=tx, y=ty, mode="markers", name=label,
-                        marker=dict(
-                            size=[13 if n in target_set else 10 for n in names], color=color,
-                            symbol=["diamond" if n in target_set else "circle" for n in names],
-                            line=dict(width=2, color=WHITE),
-                        ),
-                        text=[etiqueta(n) for n in names],
+                        x=tx, y=ty, mode="markers+text", name=label,
+                        text=[etiqueta(n) for n in names], textposition=positions,
+                        textfont=dict(size=14, color=color, family=FONT),
+                        marker=dict(size=6, color=color),
                         customdata=np.column_stack([lx[names].to_numpy(), ly[names].to_numpy()]),
                         hovertemplate=(
                             "<b>%{text}</b><br>"
@@ -703,8 +694,6 @@ try:
                             f"Carga en {y_component}: %{{customdata[1]:+.3f}}<extra></extra>"
                         ),
                     ))
-
-            titulo = f"Proyección PCA: {x_component} vs. {y_component}" + (" y vectores" if show_vec else "")
             base_layout(fig, chart_height, titulo)
             fig.update_xaxes(
                 title_text=f"<b>{x_component}</b> ({var_of[x_component]:.2f} % de varianza)",
