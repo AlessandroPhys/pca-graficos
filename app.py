@@ -27,7 +27,11 @@ TOP_N_DEFECTO = 15                 # variables por gráfico de cargas / biplot
 MAX_FALTANTES = 0.50               # se eliminan las variables con más de 50 % de faltantes
 COLUMNAS_IDENTIFICADORAS = ["State"]          # identificadores o metadatos
 COLUMNAS_REDUNDANTES = ["kidsBornNevrMarr"]   # redundantes / no deseadas
-TARGETS_INCLUIDOS = ["violentPerPop", "nonViolPerPop"]  # targets que entran al análisis
+# Variables de criminalidad (targets) que se suman a la matriz X. Como solo se hace un PCA (no hay
+# variable objetivo), se incorporan como una variable más y pasan por los mismos filtros.
+#   None -> todas las variables de criminalidad del dataset (18)
+#   o una lista, por ejemplo ["violentPerPop", "nonViolPerPop"]
+TARGETS_INCLUIDOS = None
 
 # ==========================================================================
 # GUÍA DE COMPONENTES
@@ -37,13 +41,13 @@ TARGETS_INCLUIDOS = ["violentPerPop", "nonViolPerPop"]  # targets que entran al 
 # Si se deja vacío, el panel muestra "Descripción por completar."
 # ==========================================================================
 DESCRIPCIONES = {
-    "PC1": {"titulo": "Nivel socioeconómico", "detalle": "Bienestar económico y familias biparentales vs. pobreza y carencias"},
-    "PC2": {"titulo": "Inmigración y diversidad lingüística", "detalle": "Inmigrantes, hispanos/asiáticos y hogares hacinados vs. habla solo inglés"},
-    "PC3": {"titulo": "Tamaño del hogar y arraigo residencial", "detalle": "Hogares numerosos de propietarios arraigados vs. profesionales universitarios e inmigrantes recientes"},
-    "PC4": {"titulo": "Estructura de edad", "detalle": "Población joven, móvil y vivienda reciente vs. población mayor, jubilada y estable"},
-    "PC5": {"titulo": "Tamaño de la población (escala urbana)", "detalle": "Grandes ciudades (cifras absolutas altas) vs. localidades pequeñas"},
-    "PC6": {"titulo": "Ciclo de vida y estado civil", "detalle": "Jóvenes solteros con alquiler caro vs. adultos divorciados con empleo"},
-    "PC7": {"titulo": "Composición racial y vulnerabilidad urbana", "detalle": "Población negra, viviendas abandonadas y delito violento vs. población blanca mayor y jubilada"},
+    "PC1": {"titulo": "", "detalle": ""},
+    "PC2": {"titulo": "", "detalle": ""},
+    "PC3": {"titulo": "", "detalle": ""},
+    "PC4": {"titulo": "", "detalle": ""},
+    "PC5": {"titulo": "", "detalle": ""},
+    "PC6": {"titulo": "", "detalle": ""},
+    "PC7": {"titulo": "", "detalle": ""},
 }
 
 # Nombres reales de las 143 variables del dataset (125 explicativas + 18 de criminalidad),
@@ -354,8 +358,11 @@ try:
     features, targets_all, community_names = load_data()
 
     # ==================== CELDA 5 DEL NOTEBOOK: preparar la matriz ====================
-    # Variables explicativas + variables de criminalidad (targets) elegidas.
-    targets_sel = targets_all[[c for c in TARGETS_INCLUIDOS if c in targets_all.columns]]
+    # Variables explicativas + variables de criminalidad (targets): una sola matriz X para el PCA.
+    if TARGETS_INCLUIDOS is None:
+        targets_sel = targets_all
+    else:
+        targets_sel = targets_all[[c for c in TARGETS_INCLUIDOS if c in targets_all.columns]]
     target_set = set(targets_sel.columns)
     X = pd.concat([features, targets_sel], axis=1)
     n_inicial = X.shape[1]
@@ -453,6 +460,7 @@ try:
         (fmt_int(n_total), "Componentes calculadas"),
         (f"{100 * acumulada[k - 1]:.1f} %", f"Varianza acumulada PC1–PC{k}"),
         (fmt_int(len(elim_por_na)), f"Variables excluidas (> {MAX_FALTANTES * 100:.0f} % faltantes)"),
+        (f"{n_targets_kept} de {len(target_set)}", "Variables de criminalidad conservadas"),
     ]
     st.markdown(
         '<div class="stats">'
@@ -692,12 +700,18 @@ try:
         "Elegir las flechas según", [MODO_X, MODO_EQUIL, MODO_PLANO, MODO_Y], index=0, key="bip_modo",
     )
     max_vec = min(30, len(X.columns))
-    bc4, bc5 = st.columns([2.4, 2])
+    bc4, bc5, bc6 = st.columns([2, 2, 1.8])
     n_vec = bc4.slider(
         "Variables (flechas)", min_value=min(5, max_vec), max_value=max_vec,
         value=min(TOP_N_DEFECTO, max_vec), key="bip_n",
     )
-    estilo = bc5.selectbox("Estilo", [ESTILO_NB, ESTILO_COM], index=0, key="bip_estilo")
+    estilo = bc5.selectbox("Estilo", [ESTILO_COM, ESTILO_NB], index=0, key="bip_estilo")
+    if estilo == ESTILO_COM:
+        escala_flechas = bc6.slider(
+            "Tamaño de las flechas (%)", min_value=50, max_value=200, value=100, step=10, key="bip_escala",
+        ) / 100
+    else:
+        escala_flechas = 1.0
 
     col_chart3, col_guide3 = st.columns([3.2, 1.25], gap="medium")
     with col_chart3:
@@ -790,11 +804,12 @@ try:
                 sx, sy = scores_df[bx].to_numpy(), scores_df[by].to_numpy()
                 # Las flechas se escalan (con un único factor) para que quepan en la nube de puntos.
                 ref = min(np.percentile(np.abs(sx), 98), np.percentile(np.abs(sy), 98))
-                scale = 0.9 * ref / float(reach[top_vars].max())
+                scale = 0.9 * ref * escala_flechas / float(reach[top_vars].max())
+                # Comunidades: puntos pequeños y semitransparentes para que no tapen las flechas.
                 fig.add_trace(go.Scatter(
                     x=sx, y=sy, mode="markers", name="Comunidades",
                     text=scores_df["Comunidad"],
-                    marker=dict(size=7, color=BLUE, opacity=0.6, line=dict(width=0.6, color=WHITE)),
+                    marker=dict(size=6.5, color=BLUE, opacity=0.40),
                     hovertemplate=(
                         "<b>%{text}</b><br>"
                         f"{bx}: %{{x:.2f}}<br>{by}: %{{y:.2f}}<extra></extra>"
@@ -808,21 +823,32 @@ try:
                     if not names:
                         continue
                     tx, ty = lx[names].to_numpy() * scale, ly[names].to_numpy() * scale
-                    for a, b in zip(tx, ty):
+                    for a, b, nombre in zip(tx, ty, names):
+                        # Borde blanco (flecha ancha por detrás) + flecha de color encima.
+                        for width, arrow_color in ((8, WHITE), (4, color)):
+                            fig.add_annotation(
+                                x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
+                                showarrow=True, arrowhead=3, arrowsize=1.2, arrowwidth=width,
+                                arrowcolor=arrow_color, text="",
+                            )
+                        # Etiqueta con fondo blanco para que se lea sobre los puntos.
                         fig.add_annotation(
-                            x=a, y=b, ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
-                            showarrow=True, arrowhead=3, arrowsize=1.3, arrowwidth=2.5,
-                            arrowcolor=color, text="",
+                            x=a, y=b, xref="x", yref="y", text=f"<b>{etiqueta(nombre)}</b>",
+                            showarrow=False, font=dict(size=15, color=color, family=FONT),
+                            xanchor="left" if a >= 0 else "right",
+                            yanchor="bottom" if b >= 0 else "top",
+                            xshift=6 if a >= 0 else -6, yshift=4 if b >= 0 else -4,
+                            bgcolor="rgba(255,255,255,0.92)", bordercolor=color, borderwidth=1.5, borderpad=2,
                         )
-                    positions = [
-                        ("top" if b >= 0 else "bottom") + (" right" if a >= 0 else " left")
-                        for a, b in zip(tx, ty)
-                    ]
+                    # Puntas de las flechas: aportan la leyenda y el cuadro emergente con las cargas.
                     fig.add_trace(go.Scatter(
-                        x=tx, y=ty, mode="markers+text", name=label,
-                        text=[etiqueta(n) for n in names], textposition=positions,
-                        textfont=dict(size=15, color=color, family=FONT),
-                        marker=dict(size=8, color=color),
+                        x=tx, y=ty, mode="markers", name=label,
+                        marker=dict(
+                            size=[13 if n in target_set else 10 for n in names], color=color,
+                            symbol=["diamond" if n in target_set else "circle" for n in names],
+                            line=dict(width=2, color=WHITE),
+                        ),
+                        text=[etiqueta(n) for n in names],
                         customdata=np.column_stack([lx[names].to_numpy(), ly[names].to_numpy()]),
                         hovertemplate=(
                             "<b>%{text}</b><br>"
@@ -841,12 +867,13 @@ try:
                     scaleanchor="x", scaleratio=1,
                 )
                 caption = (
-                    f'<p class="figcap"><b>Figura 5.</b> Biplot de {bx} y {by}: los puntos son comunidades '
-                    f"y las flechas son las {len(top_vars)} variables {desc_modo} "
-                    f"(las de criminalidad llevan ★ y van en naranja). Los ejes tienen la misma escala, de modo que "
-                    f"el ángulo entre dos flechas aproxima la correlación entre sus variables. La longitud de las "
-                    f"flechas está escalada para visualizarla junto a las comunidades; una comunidad se ubica hacia "
-                    f"donde apuntan las variables en las que es alta.</p>"
+                    f'<p class="figcap"><b>Figura 5.</b> Biplot de {bx} y {by}: los puntos tenues son las '
+                    f"puntuaciones (scores) de las comunidades y las flechas son las {len(top_vars)} variables "
+                    f"{desc_modo} (las de criminalidad llevan ★ y van en naranja). Los ejes tienen la misma "
+                    f"escala, de modo que el ángulo entre dos flechas aproxima la correlación entre sus variables. "
+                    f"La longitud de las flechas está escalada (factor ajustable) para visualizarla junto a las "
+                    f"comunidades; una comunidad se ubica hacia donde apuntan las variables en las que es alta. "
+                    f"Al pasar el puntero se muestra el nombre de la comunidad o las cargas de la variable.</p>"
                 )
             show_chart(fig, f"biplot_{bx}_{by}")
             st.markdown(caption, unsafe_allow_html=True)
@@ -855,7 +882,8 @@ try:
 
     # ------------------------------ Datos y metodología ------------------------------
     with st.expander("Datos y metodología", expanded=False):
-        targets_txt = ", ".join(TARGETS_INCLUIDOS)
+        targets_txt = ", ".join(targets_sel.columns)
+        targets_perdidos = [c for c in targets_sel.columns if c not in X.columns]
         st.markdown(
             f"""
 **Fuente.** UCI Machine Learning Repository, *Communities and Crime Unnormalized* (id. 211).
@@ -871,8 +899,9 @@ de criminalidad: {fmt_int(len(elim_por_na))} variables.
 4. Los datos faltantes restantes ({fmt_int(total_faltantes_imputados)} celdas) se imputan con la mediana de cada
 variable y luego cada variable se estandariza (media 0, desviación 1).
 
-Quedan {fmt_int(X.shape[1])} variables, de las cuales {fmt_int(n_targets_kept)} son de criminalidad. No se
-elimina ninguna comunidad (n = {fmt_int(X.shape[0])}).
+Quedan {fmt_int(X.shape[1])} variables, de las cuales {fmt_int(n_targets_kept)} son de criminalidad
+(descartadas por los filtros: {", ".join(targets_perdidos) or "ninguna"}). No se elimina ninguna comunidad
+(n = {fmt_int(X.shape[0])}).
 
 **PCA (celda 6 del notebook).** Se calculan todos los componentes (`n_components=None`, `random_state={RANDOM_STATE}`).
 La varianza explicada y acumulada se muestra en la sección 1. Las cargas se calculan como autovectores ×
