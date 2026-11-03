@@ -247,17 +247,20 @@ def style_axes(fig):
     fig.update_yaxes(**axis)
 
 
-def base_layout(fig, height, title, title_size=25, legend_size=17, top=105):
+def base_layout(fig, height, title, title_size=25, legend_size=17, top=105, legend_y=1.03):
     fig.update_layout(
         height=height,
         template="plotly_white",
         paper_bgcolor=WHITE,
         plot_bgcolor=WHITE,
         font=dict(family=FONT, size=17, color=INK),
-        title=dict(text=f"<b>{title}</b>", x=0.5, xanchor="center", font=dict(size=title_size, color=INK)),
+        title=dict(
+            text=f"<b>{title}</b>", x=0.5, xanchor="center", y=0.985, yanchor="top",
+            font=dict(size=title_size, color=INK),
+        ),
         margin=dict(l=20, r=25, t=top, b=20),
         legend=dict(
-            orientation="h", x=0.5, xanchor="center", y=1.0, yanchor="bottom",
+            orientation="h", x=0.5, xanchor="center", y=legend_y, yanchor="bottom",
             font=dict(size=legend_size, color=INK), bgcolor="rgba(255,255,255,0)", itemsizing="constant",
         ),
         hoverlabel=dict(bgcolor=INK, bordercolor=INK, font=dict(size=17, color="#FFFFFF", family=FONT)),
@@ -615,7 +618,7 @@ try:
             fig.add_trace(go.Scatter(
                 x=radius * np.sqrt(pca.explained_variance_[ix]) * np.cos(t),
                 y=radius * np.sqrt(pca.explained_variance_[iy]) * np.sin(t),
-                mode="lines", name="Elipse de confianza del 95 %",
+                mode="lines", name="Elipse de confianza 95 %",
                 line=dict(color="#64748B" if show_vec else INK, width=2 if show_vec else 2.5, dash="dash"),
                 hoverinfo="skip",
             ))
@@ -659,12 +662,12 @@ try:
                             top_vars.append(v)
                     desc_modo = f"con mayor carga absoluta en {x_component} y en {y_component} (mitad según cada eje)"
 
-                                # Un único factor escala las flechas para que quepan en la nube de puntos.
+                # Un único factor escala las flechas para que quepan en la nube de puntos.
                 ref = min(np.percentile(np.abs(sx), 98), np.percentile(np.abs(sy), 98))
                 scale = 0.9 * ref * escala_flechas / float(reach[top_vars].max())
                 for is_target, color, label in (
                     (False, INK, "Variable explicativa"),
-                    (True, ORANGE, "Variable de criminalidad (target)"),
+                    (True, ORANGE, "Criminalidad (target)"),
                 ):
                     names = [v for v in top_vars if (v in target_set) == is_target]
                     if not names:
@@ -694,7 +697,9 @@ try:
                             f"Carga en {y_component}: %{{customdata[1]:+.3f}}<extra></extra>"
                         ),
                     ))
-            base_layout(fig, chart_height, titulo)
+
+            titulo = f"Proyección PCA: {x_component} vs. {y_component}" + (" y vectores" if show_vec else "")
+            base_layout(fig, chart_height, titulo, legend_size=16, top=155, legend_y=1.03)
             fig.update_xaxes(
                 title_text=f"<b>{x_component}</b> ({var_of[x_component]:.2f} % de varianza)",
                 zeroline=True, zerolinecolor=INK, zerolinewidth=2.5,
