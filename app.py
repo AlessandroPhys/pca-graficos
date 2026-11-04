@@ -170,9 +170,15 @@ h1 {
 [data-testid="stSlider"] { padding: 0 0.5rem; }
 [data-testid="stAlert"] { text-align: center; }
 
-/* Gráfico: sin relleno extra para evitar barras de desplazamiento internas */
-[data-testid="stPlotlyChart"] { padding: 0 !important; margin: 0.2rem 0 0 0; overflow: hidden !important; }
-[data-testid="stPlotlyChart"] > div { overflow: hidden !important; }
+/* Eliminar padding y márgenes extra del contenedor de Plotly en Streamlit */
+[data-testid="stPlotlyChart"] {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+[data-testid="stPlotlyChart"] > div {
+    padding: 0 !important;
+    margin: 0 !important;
+}
 
 /* Pie de figura */
 .figcap {
